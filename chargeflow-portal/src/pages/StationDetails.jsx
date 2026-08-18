@@ -8,7 +8,7 @@ import EnergyBadge from '../components/ui/EnergyBadge';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Skeleton from '../components/ui/Skeleton';
-import { ArrowLeft, Star, MapPin, ArrowRight, ShieldCheck, Coffee, Wifi, Sparkles, Heart } from 'lucide-react';
+import { ArrowLeft, MapPin, ArrowRight, ShieldCheck, Sparkles, Heart } from 'lucide-react';
 import api from '../services/api';
 import useToast from '../hooks/useToast';
 
@@ -69,7 +69,7 @@ export default function StationDetails() {
   const renewablePct =
     stationData?.renewableSharePct ||
     (stationData?.renewableMix?.solarPct || 0) + (stationData?.renewableMix?.windPct || 0) ||
-    75;
+    0;
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex">
@@ -104,10 +104,11 @@ export default function StationDetails() {
                   </Link>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[#e7c365] bg-[#e7c365]/10 px-2 py-0.5 rounded-md flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5 fill-current" /> 4.9 (48 Reviews)
-                      </span>
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#22C55E]/15 text-[#22C55E]">
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                        (stationData.availableSlotsCount || 0) > 0
+                          ? 'bg-[#22C55E]/15 text-[#22C55E]'
+                          : 'bg-[#FFB4AB]/15 text-[#FFB4AB]'
+                      }`}>
                         {stationData.availableSlotsCount || 0} Bays Free Now
                       </span>
                     </div>

@@ -148,8 +148,8 @@ export default function MyStations() {
                         <span className="font-bold text-[#22C55E]">₹{s.basePricePerKWh}/kWh</span>
                       </div>
                       <div className="bg-[#1d1b20] p-2 rounded-xl border border-[#494551]/40">
-                        <span className="text-[9px] text-[#948e9c] uppercase block">Rating</span>
-                        <span className="font-bold text-[#e7c365]">★ 4.9</span>
+                        <span className="text-[9px] text-[#948e9c] uppercase block">Available</span>
+                        <span className="font-bold text-[#22C55E]">{s.availableSlotsCount ?? '—'}</span>
                       </div>
                     </div>
                   </div>

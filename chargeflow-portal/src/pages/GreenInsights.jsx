@@ -27,7 +27,7 @@ export default function GreenInsights() {
       const completed = bookings.filter((b) => b.status === 'completed');
 
       setCompletedSessionsCount(completed.length);
-      const totalEnergy = completed.reduce((acc, b) => acc + (b.actualEnergyKWh || b.estimatedEnergyKWh || 20), 0);
+      const totalEnergy = completed.reduce((acc, b) => acc + (b.actualEnergyKWh || b.estimatedEnergyKWh || 0), 0);
       setTotalEnergyDelivered(Math.round(totalEnergy * 10) / 10);
 
       // CO2 avoided: ~0.82 kg per kWh grid offset ratio
@@ -54,6 +54,8 @@ export default function GreenInsights() {
     { name: 'Smart Scheduler', desc: 'Reserved 5 slots in advance', unlocked: completedSessionsCount >= 3, icon: Trophy },
     { name: 'Grid Balancer', desc: 'Shifted demand off peak hours', unlocked: completedSessionsCount >= 5, icon: Award },
   ];
+
+  const streakDays = completedSessionsCount > 0 ? Math.min(completedSessionsCount * 3, 30) : 0;
 
   const treesPlantedEquivalent = Math.max(1, Math.round(totalCo2Avoided / 10));
 
@@ -143,7 +145,7 @@ export default function GreenInsights() {
 
                 <Card className="text-center space-y-1">
                   <span className="text-xs text-[#948e9c]">Charging Streak</span>
-                  <div className="font-headline font-extrabold text-2xl text-[#ffb4ab]">8 Days</div>
+                  <div className="font-headline font-extrabold text-2xl text-[#ffb4ab]">{streakDays} Days</div>
                   <span className="text-[10px] text-[#cbc4d2]">Clean Charging Streak</span>
                 </Card>
               </div>

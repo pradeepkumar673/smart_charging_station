@@ -58,7 +58,7 @@ export default function TwinInspector({ bay, onClose, onToggleMaintenance }) {
           fullWidth
           size="sm"
           icon={Wrench}
-          onClick={() => onToggleMaintenance && onToggleMaintenance(bay.id)}
+          onClick={() => onToggleMaintenance && onToggleMaintenance(bay._id || bay.id)}
         >
           {bay.status === 'maintenance' ? 'Re-enable Dispenser' : 'Set Maintenance Mode'}
         </Button>

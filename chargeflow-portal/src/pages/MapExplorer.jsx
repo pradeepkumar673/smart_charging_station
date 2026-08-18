@@ -9,7 +9,7 @@ import StationCardSkeleton from '../components/ui/StationCardSkeleton';
 import EnergyBadge from '../components/ui/EnergyBadge';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/states/EmptyState';
-import { Search, MapPin, List, Map as MapIcon, SlidersHorizontal, Star, ArrowRight, X } from 'lucide-react';
+import { Search, MapPin, List, Map as MapIcon, SlidersHorizontal, ArrowRight, X } from 'lucide-react';
 import api from '../services/api';
 import useToast from '../hooks/useToast';
 
@@ -163,10 +163,14 @@ export default function MapExplorer() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-[#e7c365] flex items-center gap-1">
-                          <Star className="w-3.5 h-3.5 fill-current" /> 4.9
-                        </span>
-                        <EnergyBadge renewablePercent={selectedStation.renewableSharePct || 75} />
+                        <EnergyBadge renewablePercent={selectedStation.renewableSharePct || 0} />
+                        {(selectedStation.availableSlotsCount || 0) > 0 ? (
+                          <span className="text-xs font-bold text-[#22C55E]">
+                            {selectedStation.availableSlotsCount} Slots Free
+                          </span>
+                        ) : (
+                          <span className="text-xs font-bold text-[#FFB4AB]">No slots free</span>
+                        )}
                       </div>
                       <h3 className="font-headline font-bold text-xl text-white mt-1">
                         {selectedStation.name}

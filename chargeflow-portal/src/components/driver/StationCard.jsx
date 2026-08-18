@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import EnergyBadge from '../ui/EnergyBadge';
-import { Star, MapPin, Zap, ArrowRight } from 'lucide-react';
+import { MapPin, Zap, ArrowRight } from 'lucide-react';
 
 export default function StationCard({ station, onSelect }) {
   const {
@@ -34,10 +34,11 @@ export default function StationCard({ station, onSelect }) {
         {/* Header bar */}
         <div className="flex items-start justify-between gap-2">
           <div>
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-[#e7c365] bg-[#e7c365]/10 px-2 py-0.5 rounded-md mb-1">
-              <Star className="w-3.5 h-3.5 fill-current" />
-              <span>4.9</span>
-              <span className="text-[#948e9c]">(48)</span>
+            <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md mb-1 ${
+              freeSlots > 0 ? 'text-[#22C55E] bg-[#22C55E]/10' : 'text-[#FFB4AB] bg-[#FFB4AB]/10'
+            }`}>
+              <Zap className="w-3.5 h-3.5" />
+              <span>{freeSlots} Bays Free</span>
             </span>
             <h3 className="font-headline font-bold text-lg text-white group-hover:text-[#cfbcff] transition-colors leading-snug">
               {name}
@@ -48,13 +49,7 @@ export default function StationCard({ station, onSelect }) {
             </div>
           </div>
 
-          <span className={`text-xs font-extrabold px-2.5 py-1 rounded-full whitespace-nowrap border ${
-            freeSlots > 0
-              ? 'text-[#22C55E] bg-[#22C55E]/15 border-[#22C55E]/30'
-              : 'text-[#FFB4AB] bg-[#FFB4AB]/15 border-[#FFB4AB]/30'
-          }`}>
-            {freeSlots}/{totalBays} Free
-          </span>
+          <span className="text-xs text-[#948e9c] font-semibold">{totalBays} Total Bays</span>
         </div>
 
         {/* Energy badge & power specs */}

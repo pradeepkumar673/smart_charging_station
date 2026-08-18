@@ -54,7 +54,7 @@ export default function ActiveSession() {
     try {
       const elapsedMins = Math.max(1, Math.round((Date.now() - new Date(activeSession.startTime).getTime()) / 60000));
       const maxPower = activeSession.slot?.maxPowerKw || 60;
-      const energyDeliveredKWh = Math.round((maxPower * (elapsedMins / 60)) * 10) / 10 || 18.5;
+      const energyDeliveredKWh = Math.round((maxPower * (elapsedMins / 60)) * 10) / 10 || 0.5;
 
       const response = await api.post(`/sessions/${activeSession._id}/end`, {
         energyDeliveredKWh,
@@ -79,7 +79,7 @@ export default function ActiveSession() {
   };
 
   const renewablePct =
-    activeSession?.renewableMixAtStart?.solarPct + activeSession?.renewableMixAtStart?.windPct || 75;
+    (activeSession?.renewableMixAtStart?.solarPct || 0) + (activeSession?.renewableMixAtStart?.windPct || 0);
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex">
@@ -172,7 +172,7 @@ export default function ActiveSession() {
                       <div className="bg-[#1d1b20] p-3 rounded-xl border border-[#494551]/40">
                         <span className="text-[10px] text-[#948e9c] uppercase block">Current Cost</span>
                         <span className="font-headline font-bold text-lg text-[#22C55E]">
-                          ₹{activeSession.cost || 268}
+                        ₹{Math.round((activeSession.slot?.maxPowerKw || 60) * (Math.max(1, Math.round((Date.now() - new Date(activeSession.startTime).getTime()) / 60000)) / 60) * (activeSession.station?.basePricePerKWh || 14.5) * 100) / 100}
                         </span>
                       </div>
                     </div>

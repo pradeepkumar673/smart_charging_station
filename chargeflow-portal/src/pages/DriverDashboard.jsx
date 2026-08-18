@@ -47,7 +47,7 @@ export default function DriverDashboard() {
       const totalEnergy = completed.reduce((acc, b) => acc + (b.actualEnergyKWh || b.estimatedEnergyKWh || 0), 0);
       const co2 = Math.round(totalEnergy * 0.82 * 10) / 10;
       const points = completed.length * 100;
-      const streak = completed.length > 0 ? 8 : 0;
+      const streak = completed.length > 0 ? Math.min(completed.length * 3, 30) : 0;
 
       setStats({
         greenPoints: points,
