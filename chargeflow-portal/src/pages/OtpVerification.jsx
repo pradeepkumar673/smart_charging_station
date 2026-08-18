@@ -1,17 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import { ShieldCheck, ArrowRight, RotateCcw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ShieldCheck, ArrowRight, RotateCcw, CheckCircle2, AlertCircle, Lock } from 'lucide-react';
+import useAuth from '../hooks/useAuth';
+import useToast from '../hooks/useToast';
 
 export default function OtpVerification() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { verifyOtp, resetPassword, forgotPassword } = useAuth();
+  const { showToast } = useToast();
+
+  const targetEmail = location.state?.email || 'driver1@chargeflow.io';
+
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
-  const [status, setStatus] = useState(null); // null, 'success', 'error'
+  const [step, setStep] = useState('otp'); // 'otp' | 'reset' | 'success'
+  const [submitting, setSubmitting] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const inputRefs = useRef([]);
 
   useEffect(() => {
@@ -34,13 +46,13 @@ export default function OtpVerification() {
 
     // Auto focus next input
     if (value && index < 5) {
-      inputRefs.current[index + 1].focus();
+      inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handleKeyDown = (index, e) => {
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1].focus();
+      inputRefs.current[index - 1]?.focus();
     }
   };
 
@@ -50,32 +62,99 @@ export default function OtpVerification() {
     if (/^\d{6}$/.test(pastedData)) {
       const digits = pastedData.split('');
       setOtp(digits);
-      inputRefs.current[5].focus();
+      inputRefs.current[5]?.focus();
     }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setTimer(60);
     setCanResend(false);
     setOtp(['', '', '', '', '', '']);
-    setStatus(null);
-    inputRefs.current[0].focus();
+    inputRefs.current[0]?.focus();
+
+    try {
+      await forgotPassword(targetEmail);
+      showToast({
+        title: 'OTP Resent',
+        message: `A new verification code has been issued for ${targetEmail}`,
+        type: 'info',
+      });
+    } catch (err) {
+      showToast({
+        title: 'Resend Failed',
+        message: err.message || 'Could not resend OTP',
+        type: 'error',
+      });
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
     const otpCode = otp.join('');
 
     if (otpCode.length < 6) {
-      setStatus('error');
+      showToast({
+        title: 'Incomplete Code',
+        message: 'Please enter all 6 digits of the OTP.',
+        type: 'error',
+      });
       return;
     }
 
-    // Success simulation
-    setStatus('success');
-    setTimeout(() => {
-      navigate('/');
-    }, 1800);
+    setSubmitting(true);
+    try {
+      await verifyOtp(targetEmail, otpCode);
+      showToast({
+        title: 'OTP Verified!',
+        message: 'You can now set a new password.',
+        type: 'success',
+      });
+      setStep('reset');
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'OTP verification failed.';
+      showToast({
+        title: 'Verification Error',
+        message: errMsg,
+        type: 'error',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      showToast({
+        title: 'Password Mismatch',
+        message: 'New passwords do not match.',
+        type: 'error',
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await resetPassword(targetEmail, newPassword);
+      setStep('success');
+      showToast({
+        title: 'Password Reset Complete',
+        message: 'Please log in with your new password.',
+        type: 'success',
+      });
+      setTimeout(() => {
+        navigate('/driver/login');
+      }, 2000);
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Failed to reset password.';
+      showToast({
+        title: 'Reset Error',
+        message: errMsg,
+        type: 'error',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -93,25 +172,61 @@ export default function OtpVerification() {
                 <ShieldCheck className="w-8 h-8" />
               </div>
             </div>
-            <h2 className="font-headline text-3xl font-extrabold text-white">Verify It's You</h2>
+            <h2 className="font-headline text-3xl font-extrabold text-white">
+              {step === 'reset' ? 'Set New Password' : 'Verify It\'s You'}
+            </h2>
             <p className="text-sm text-[#cbc4d2]">
-              We sent a 6-digit security code to <span className="text-[#36D8FF] font-semibold">user@chargeflow.io</span>
+              Verification for <span className="text-[#36D8FF] font-semibold">{targetEmail}</span>
             </p>
           </div>
 
           <Card glow className="text-center">
-            {status === 'success' ? (
+            {step === 'success' ? (
               <div className="py-6 space-y-3 animate-fadeIn">
                 <div className="flex justify-center">
                   <CheckCircle2 className="w-16 h-16 text-[#22C55E] animate-bounce" />
                 </div>
-                <h3 className="font-headline font-bold text-2xl text-white">Verification Successful!</h3>
+                <h3 className="font-headline font-bold text-2xl text-white">Password Reset Complete!</h3>
                 <p className="text-xs text-[#cbc4d2]">
-                  Authenticating session with ChargeFlow Grid... Redirecting to portal.
+                  Redirecting to Sign In page...
                 </p>
               </div>
+            ) : step === 'reset' ? (
+              <form onSubmit={handleResetPassword} className="space-y-4 text-left">
+                <Input
+                  label="New Password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 8 characters with 1 number"
+                  icon={Lock}
+                  required
+                />
+
+                <Input
+                  label="Confirm New Password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                  icon={Lock}
+                  required
+                />
+
+                <Button
+                  type="submit"
+                  variant="brand"
+                  fullWidth
+                  size="lg"
+                  loading={submitting}
+                  icon={ArrowRight}
+                  iconPosition="right"
+                >
+                  Update Password
+                </Button>
+              </form>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleVerifyOtp} className="space-y-6">
                 {/* 6 Digit Inputs */}
                 <div className="flex items-center justify-center gap-2 sm:gap-3" onPaste={handlePaste}>
                   {otp.map((digit, index) => (
@@ -128,18 +243,11 @@ export default function OtpVerification() {
                         digit
                           ? 'border-[#36D8FF] text-white bg-[#211f24] shadow-md shadow-[#36D8FF]/20'
                           : 'border-[#494551] text-[#e6e0e9] focus:border-[#cfbcff] focus:ring-2 focus:ring-[#cfbcff]/20'
-                      } ${status === 'error' ? 'border-[#ffb4ab]' : ''}`}
+                      }`}
                       autoFocus={index === 0}
                     />
                   ))}
                 </div>
-
-                {status === 'error' && (
-                  <div className="flex items-center justify-center gap-2 text-xs text-[#ffb4ab]">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>Please enter all 6 digits of the verification code.</span>
-                  </div>
-                )}
 
                 <div className="flex items-center justify-between text-xs text-[#948e9c]">
                   <span>
@@ -158,7 +266,7 @@ export default function OtpVerification() {
                   </span>
 
                   <Link to="/forgot-password" className="text-[#cfbcff] hover:underline">
-                    Use different contact
+                    Use different email
                   </Link>
                 </div>
 
@@ -167,10 +275,11 @@ export default function OtpVerification() {
                   variant="brand"
                   fullWidth
                   size="lg"
+                  loading={submitting}
                   icon={ArrowRight}
                   iconPosition="right"
                 >
-                  Verify and Continue
+                  Verify OTP Code
                 </Button>
               </form>
             )}

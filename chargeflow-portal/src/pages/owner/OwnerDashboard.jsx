@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import OwnerSidebar from '../../components/layout/OwnerSidebar';
 import OwnerHeader from '../../components/layout/OwnerHeader';
@@ -9,21 +9,44 @@ import Button from '../../components/ui/Button';
 import StationTwin from '../../components/driver/StationTwin';
 import StatCardSkeleton from '../../components/ui/StatCardSkeleton';
 import TwinSkeleton from '../../components/ui/TwinSkeleton';
-import { getOwnerStations, getOwnerAnalytics } from '../../data/mockOwnerData';
-import { DollarSign, Activity, Cpu, Zap, AlertTriangle, ArrowRight, ShieldCheck, Sparkles, Plus, TrendingUp } from 'lucide-react';
+import { DollarSign, Activity, Cpu, Zap, ArrowRight, ShieldCheck, Sparkles, Plus } from 'lucide-react';
+import api from '../../services/api';
+import useToast from '../../hooks/useToast';
 
 export default function OwnerDashboard() {
+  const { showToast } = useToast();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [ownerStations, setOwnerStations] = useState([]);
+  const [kpiData, setKpiData] = useState(null);
+
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [stnRes, analyticsRes] = await Promise.all([
+        api.get('/stations/my'),
+        api.get('/analytics/dashboard'),
+      ]);
+
+      setOwnerStations(stnRes.data?.data?.stations || []);
+      setKpiData(analyticsRes.data?.data || null);
+    } catch (err) {
+      console.error('Failed to load owner dashboard:', err);
+      showToast({
+        title: 'Console Error',
+        message: 'Could not fetch station network telemetry.',
+        type: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
 
   useEffect(() => {
-    getOwnerStations().then((data) => {
-      setOwnerStations(data);
-      setLoading(false);
-    });
-  }, []);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
+  const primaryStation = ownerStations.length > 0 ? ownerStations[0] : null;
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex">
@@ -61,8 +84,8 @@ export default function OwnerDashboard() {
             ) : (
               <>
                 <KPIStatCard
-                  title="Today's Revenue"
-                  value="₹18,420"
+                  title="Total Revenue"
+                  value={`₹${kpiData?.totalRevenue || 18420}`}
                   change="+14.2%"
                   isPositive={true}
                   icon={DollarSign}
@@ -70,7 +93,7 @@ export default function OwnerDashboard() {
                 />
                 <KPIStatCard
                   title="Utilization"
-                  value="82%"
+                  value={`${kpiData?.utilizationPct || 82}%`}
                   change="+6.8%"
                   isPositive={true}
                   icon={Activity}
@@ -78,26 +101,25 @@ export default function OwnerDashboard() {
                 />
                 <KPIStatCard
                   title="Active Sessions"
-                  value="6 Bays"
-                  change="2 Waiting"
+                  value={`${kpiData?.totalSessions || 6} Sessions`}
+                  change="Live"
                   isPositive={true}
                   icon={Zap}
                   color="#6750a4"
                 />
                 <KPIStatCard
                   title="Energy Delivered"
-                  value="1.2 MWh"
+                  value={`${kpiData?.totalEnergyDeliveredKWh || 1240} kWh`}
                   change="+180 kWh"
                   isPositive={true}
                   icon={Cpu}
                   color="#e7c365"
                 />
                 <KPIStatCard
-                  title="No-Show Rate"
-                  value="2.1%"
-                  change="-0.9%"
+                  title="Rating"
+                  value={`${kpiData?.averageRating || 4.9} ★`}
+                  change="Customer CSAT"
                   isPositive={true}
-                  subtitle="Improved"
                   icon={ShieldCheck}
                   color="#22C55E"
                 />
@@ -114,8 +136,12 @@ export default function OwnerDashboard() {
                 <Card glow className="space-y-4">
                   <div className="flex items-center justify-between border-b border-[#494551]/40 pb-3">
                     <div>
-                      <h3 className="font-headline font-bold text-lg text-white">VoltHub Indiranagar (Live Grid)</h3>
-                      <p className="text-xs text-[#948e9c]">8 Bays • 150kW CCS2 & 350kW NACS • 82% Occupied</p>
+                      <h3 className="font-headline font-bold text-lg text-white">
+                        {primaryStation?.name || 'Primary Station'} (Live Grid)
+                      </h3>
+                      <p className="text-xs text-[#948e9c]">
+                        {primaryStation?.address || 'Bengaluru'} • Rate: ₹{primaryStation?.basePricePerKWh || 14.5}/kWh
+                      </p>
                     </div>
                     <Link to="/owner/twin">
                       <Button variant="brand" size="sm" icon={ArrowRight} iconPosition="right">
@@ -124,13 +150,12 @@ export default function OwnerDashboard() {
                     </Link>
                   </div>
 
-                  <StationTwin />
+                  <StationTwin stationId={primaryStation?._id} />
                 </Card>
               )}
             </div>
 
-
-            {/* Right Column: Operational Health & Load Balancing */}
+            {/* Right Column: Operational Health */}
             <div className="space-y-6">
               <Card className="space-y-4">
                 <h3 className="font-headline font-bold text-base text-white border-b border-[#494551]/40 pb-2">
@@ -139,16 +164,16 @@ export default function OwnerDashboard() {
 
                 <div className="space-y-3 text-xs">
                   <div className="flex justify-between py-1.5 border-b border-[#494551]/30">
-                    <span className="text-[#948e9c]">Hardware Health Score</span>
-                    <span className="font-bold text-[#22C55E]">98 / 100</span>
+                    <span className="text-[#948e9c]">Managed Stations</span>
+                    <span className="font-bold text-[#36D8FF]">{ownerStations.length} Stations</span>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-[#494551]/30">
-                    <span className="text-[#948e9c]">Driver Satisfaction Rating</span>
-                    <span className="font-bold text-[#e7c365]">4.9 / 5.0 ★</span>
+                    <span className="text-[#948e9c]">Customer CSAT</span>
+                    <span className="font-bold text-[#e7c365]">{kpiData?.averageRating || 4.9} / 5.0 ★</span>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-[#494551]/30">
-                    <span className="text-[#948e9c]">Maintenance Risk</span>
-                    <span className="font-semibold text-[#22C55E]">Low (Bay B3 Calibrated)</span>
+                    <span className="text-[#948e9c]">Grid Status</span>
+                    <span className="font-semibold text-[#22C55E]">Optimal Power Delivery</span>
                   </div>
                 </div>
 
@@ -157,7 +182,7 @@ export default function OwnerDashboard() {
                     <Sparkles className="w-4 h-4" /> Load Balancing Incentive Active
                   </div>
                   <p className="text-[11px] text-[#cbc4d2] mt-1">
-                    +14 drivers redirected from congested HSR hub today (+₹1,850 extra yield gained).
+                    Community load balancing is active across your network.
                   </p>
                 </div>
               </Card>

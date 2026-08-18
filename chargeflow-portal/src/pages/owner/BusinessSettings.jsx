@@ -1,17 +1,67 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import OwnerSidebar from '../../components/layout/OwnerSidebar';
 import OwnerHeader from '../../components/layout/OwnerHeader';
 import Footer from '../../components/layout/Footer';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
-import { Building2, User, Users, Bell, Shield, LogOut, CheckCircle2 } from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import useAuth from '../../hooks/useAuth';
+import useToast from '../../hooks/useToast';
+import api from '../../services/api';
 
 export default function BusinessSettings() {
+  const navigate = useNavigate();
+  const { user, logout, loadUser } = useAuth();
+  const { showToast } = useToast();
+
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [autoRecovery, setAutoRecovery] = useState(true);
   const [dynamicYield, setDynamicYield] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const company = user?.company || {};
+
+  const [form, setForm] = useState({
+    name: user?.name || 'Aarav Sharma',
+    companyName: company.companyName || 'GreenCharge Energy Pvt Ltd',
+    gstNumber: company.gstNumber || '29AAAAA0000A1Z5',
+    businessAddress: company.businessAddress || '100 Feet Road, Indiranagar, Bengaluru',
+  });
+
+  const handleUpdateCompany = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await api.patch('/users/profile', {
+        name: form.name,
+        company: {
+          companyName: form.companyName,
+          gstNumber: form.gstNumber,
+          businessAddress: form.businessAddress,
+        },
+      });
+
+      await loadUser();
+      showToast({
+        title: 'Settings Saved',
+        message: 'Your station operator company details have been updated.',
+        type: 'success',
+      });
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Could not update business settings.';
+      showToast({ title: 'Update Error', message: errMsg, type: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    showToast({ title: 'Console Exit', message: 'Signed out of Owner Console.', type: 'info' });
+    navigate('/owner/login');
+  };
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex">
@@ -33,12 +83,36 @@ export default function BusinessSettings() {
               Entity Profile
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input label="Company Legal Name" defaultValue="VoltCharge Networks LLC" />
-              <Input label="Primary Operator Name" defaultValue="Arjun Patel" />
-              <Input label="Business Email" defaultValue="arjun@voltchargenetworks.com" />
-              <Input label="Tax / GST Registration ID" defaultValue="GSTIN29ABCDE1234F" />
-            </div>
+            <form onSubmit={handleUpdateCompany} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Operator Name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Company Legal Name"
+                  value={form.companyName}
+                  onChange={(e) => setForm({ ...form, companyName: e.target.value })}
+                  required
+                />
+                <Input
+                  label="GST Registration Number"
+                  value={form.gstNumber}
+                  onChange={(e) => setForm({ ...form, gstNumber: e.target.value })}
+                />
+                <Input
+                  label="Business Address"
+                  value={form.businessAddress}
+                  onChange={(e) => setForm({ ...form, businessAddress: e.target.value })}
+                />
+              </div>
+
+              <Button type="submit" variant="brand" size="sm" loading={submitting}>
+                Save Entity Profile
+              </Button>
+            </form>
           </Card>
 
           {/* Automated Network Operations */}
@@ -76,11 +150,9 @@ export default function BusinessSettings() {
 
           {/* Sign Out */}
           <div className="pt-4 text-center">
-            <Link to="/owner/login">
-              <Button variant="destructive" size="lg" icon={LogOut} fullWidth>
-                Sign Out of Console
-              </Button>
-            </Link>
+            <Button variant="destructive" size="lg" icon={LogOut} fullWidth onClick={handleLogout}>
+              Sign Out of Console
+            </Button>
           </div>
         </main>
 

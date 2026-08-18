@@ -1,5 +1,7 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Phase 1 Pages
 import Home from './pages/Home';
@@ -43,49 +45,198 @@ import StatesShowcase from './pages/StatesShowcase';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Phase 1 Core Auth & Landing Routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/driver/login" element={<DriverLogin />} />
-        <Route path="/driver/signup" element={<DriverSignup />} />
-        <Route path="/owner/login" element={<OwnerLogin />} />
-        <Route path="/owner/signup" element={<OwnerSignup />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/otp-verify" element={<OtpVerification />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Phase 1 Core Auth & Landing Routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/driver/login" element={<DriverLogin />} />
+          <Route path="/driver/signup" element={<DriverSignup />} />
+          <Route path="/owner/login" element={<OwnerLogin />} />
+          <Route path="/owner/signup" element={<OwnerSignup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/otp-verify" element={<OtpVerification />} />
 
-        {/* Phase 2 Core Driver Flow Routes */}
-        <Route path="/driver/dashboard" element={<DriverDashboard />} />
-        <Route path="/driver/explore" element={<MapExplorer />} />
-        <Route path="/driver/station/:id" element={<StationDetails />} />
-        <Route path="/driver/station/:id/book" element={<BookSlot />} />
-        <Route path="/driver/navigation/:bookingId" element={<RouteNavigation />} />
+          {/* Phase 2 Core Driver Flow Routes (Protected: driver) */}
+          <Route
+            path="/driver/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <DriverDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/explore"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <MapExplorer />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/station/:id"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <StationDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/station/:id/book"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <BookSlot />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/navigation/:bookingId"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <RouteNavigation />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Phase 3 Driver Lifecycle & Utility Routes */}
-        <Route path="/driver/session/active" element={<ActiveSession />} />
-        <Route path="/driver/recommendation" element={<SmartRecommendation />} />
-        <Route path="/driver/claim-slot" element={<ClaimSlot />} />
-        <Route path="/driver/bookings" element={<MyBookings />} />
-        <Route path="/driver/profile" element={<ProfileSettings />} />
-        <Route path="/driver/session/:id/summary" element={<SessionSummary />} />
-        <Route path="/driver/insights" element={<GreenInsights />} />
-        <Route path="/driver/notifications" element={<Notifications />} />
+          {/* Phase 3 Driver Lifecycle & Utility Routes (Protected: driver) */}
+          <Route
+            path="/driver/session/active"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <ActiveSession />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/recommendation"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <SmartRecommendation />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/claim-slot"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <ClaimSlot />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/bookings"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <MyBookings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/profile"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <ProfileSettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/session/:id/summary"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <SessionSummary />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/insights"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <GreenInsights />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/notifications"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <Notifications />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Phase 4 Station Owner Console Routes */}
-        <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-        <Route path="/owner/stations" element={<MyStations />} />
-        <Route path="/owner/slots" element={<SlotManagement />} />
-        <Route path="/owner/pricing" element={<PricingControl />} />
-        <Route path="/owner/twin" element={<OwnerDigitalTwin />} />
-        <Route path="/owner/analytics" element={<OwnerAnalytics />} />
-        <Route path="/owner/feedback" element={<FeedbackCenter />} />
-        <Route path="/owner/settings" element={<BusinessSettings />} />
+          {/* Phase 4 Station Owner Console Routes (Protected: owner) */}
+          <Route
+            path="/owner/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <OwnerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/owner/stations"
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <MyStations />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/owner/slots"
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <SlotManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/owner/pricing"
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <PricingControl />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/owner/twin"
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <OwnerDigitalTwin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/owner/analytics"
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <OwnerAnalytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/owner/feedback"
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <FeedbackCenter />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/owner/settings"
+            element={
+              <ProtectedRoute allowedRoles={['owner']}>
+                <BusinessSettings />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Phase 5 Shared Utility & 404 Routes */}
-        <Route path="/states" element={<StatesShowcase />} />
-        <Route path="/404" element={<NotFoundPage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Phase 5 Shared Utility & 404 Routes */}
+          <Route path="/states" element={<StatesShowcase />} />
+          <Route path="/404" element={<NotFoundPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

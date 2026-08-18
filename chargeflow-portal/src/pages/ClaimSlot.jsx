@@ -1,23 +1,77 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useToast } from '../hooks/useToast';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import Skeleton from '../components/ui/Skeleton';
+import EmptyState from '../components/states/EmptyState';
 import MapPanel from '../components/driver/MapPanel';
-import { Zap, Clock, MapPin, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Zap, Clock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import api from '../services/api';
+import useToast from '../hooks/useToast';
 
 export default function ClaimSlot() {
   const navigate = useNavigate();
-  const toast = useToast();
+  const { showToast } = useToast();
+
+  const [claimableSlots, setClaimableSlots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [claimingSlotId, setClaimingSlotId] = useState(null);
+  const [claimedBooking, setClaimedBooking] = useState(null);
   const [claimedModal, setClaimedModal] = useState(false);
 
-  const handleClaim = () => {
-    setClaimedModal(true);
-    toast.success("Slot claimed successfully. Head to the station now!");
+  useEffect(() => {
+    async function loadClaimableSlots() {
+      setLoading(true);
+      try {
+        const response = await api.get('/smart/claimable-slots');
+        const list = response.data?.data?.claimableSlots || [];
+        setClaimableSlots(list);
+      } catch (err) {
+        console.error('Failed to fetch claimable slots:', err);
+        showToast({
+          title: 'Error',
+          message: 'Could not load no-show claimable slots.',
+          type: 'error',
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadClaimableSlots();
+  }, [showToast]);
+
+  const handleClaim = async (slotId) => {
+    setClaimingSlotId(slotId);
+    try {
+      const response = await api.post('/smart/claim-slot', {
+        slotId,
+        durationMinutes: 45,
+        estimatedEnergyKWh: 20,
+      });
+
+      const booking = response.data?.data?.booking;
+      setClaimedBooking(booking);
+      setClaimedModal(true);
+      showToast({
+        title: 'No-Show Slot Claimed!',
+        message: 'Slot reserved for your check-in.',
+        type: 'success',
+      });
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Could not claim slot.';
+      showToast({
+        title: 'Claim Error',
+        message: errMsg,
+        type: 'error',
+      });
+    } finally {
+      setClaimingSlotId(null);
+    }
   };
 
+  const primaryClaimable = claimableSlots.length > 0 ? claimableSlots[0] : null;
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex flex-col justify-between">
@@ -34,54 +88,77 @@ export default function ClaimSlot() {
                 <Zap className="w-8 h-8 animate-bounce" />
               </div>
             </div>
-            <h2 className="font-headline text-3xl font-extrabold text-white">No-Show Slot Recovery</h2>
+            <h2 className="font-headline text-3xl font-extrabold text-white">Smart No-Show Recovery</h2>
             <p className="text-sm text-[#cbc4d2]">
-              A reserved 150 kW DC Fast charger just opened up due to a driver cancellation.
+              Claim unclaimed charger bays past the 10-minute check-in grace period.
             </p>
           </div>
 
-          <Card glow className="border-[#e7c365]/40 text-center space-y-4">
-            {/* Countdown Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#e7c365]/15 border border-[#e7c365]/30 text-[#e7c365] text-xs font-extrabold">
-              <Clock className="w-4 h-4 animate-spin-slow" />
-              <span>Claim within 07m 42s</span>
-            </div>
-
-            <div className="space-y-1 text-left pt-2">
-              <div className="flex items-center justify-between">
-                <h3 className="font-headline font-bold text-xl text-white">ChargeFlow Hub - MG Road</h3>
-                <span className="text-xs font-bold text-[#22C55E]">Bay A2 (150kW)</span>
+          {loading ? (
+            <Skeleton className="w-full h-80 rounded-2xl" />
+          ) : !primaryClaimable ? (
+            <Card className="text-center py-8">
+              <EmptyState
+                icon={Zap}
+                title="No Claimable Slots Right Now"
+                description="All drivers checked in on time! Check back shortly for newly released no-show slots."
+                ctaLabel="Return to Explorer"
+                onCtaClick={() => navigate('/driver/explore')}
+              />
+            </Card>
+          ) : (
+            <Card glow className="border-[#e7c365]/40 text-center space-y-4">
+              {/* Countdown Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#e7c365]/15 border border-[#e7c365]/30 text-[#e7c365] text-xs font-extrabold">
+                <Clock className="w-4 h-4 animate-spin-slow" />
+                <span>Claim Window: {primaryClaimable.claimWindowMinutesRemaining || 15} mins remaining</span>
               </div>
-              <p className="text-xs text-[#948e9c]">MG Road Metro Complex • 2.4 km away (8 min drive)</p>
-            </div>
 
-            {/* Mini Map Snippet */}
-            <div className="h-36 rounded-xl overflow-hidden border border-[#494551]/60 relative">
-              <MapPanel />
-            </div>
+              <div className="space-y-1 text-left pt-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-headline font-bold text-xl text-white">
+                    {primaryClaimable.station?.name || 'ChargeFlow Station'}
+                  </h3>
+                  <span className="text-xs font-bold text-[#22C55E]">
+                    Bay {primaryClaimable.slot?.slotId || 'A1'} ({primaryClaimable.slot?.maxPowerKw || 150}kW)
+                  </span>
+                </div>
+                <p className="text-xs text-[#948e9c]">
+                  {primaryClaimable.station?.address || 'Bengaluru'}
+                </p>
+              </div>
 
-            <div className="flex items-center justify-between text-xs pt-2 border-t border-[#494551]/40">
-              <span className="text-[#cbc4d2]">Standard Rate</span>
-              <span className="font-bold text-[#22C55E]">₹14 / kWh (+100 Green Points)</span>
-            </div>
+              {/* Mini Map Snippet */}
+              <div className="h-36 rounded-xl overflow-hidden border border-[#494551]/60 relative">
+                <MapPanel />
+              </div>
 
-            <div className="space-y-2 pt-2">
-              <Button
-                variant="brand"
-                fullWidth
-                size="lg"
-                icon={ArrowRight}
-                iconPosition="right"
-                onClick={handleClaim}
-              >
-                Claim Bay A2 Now
-              </Button>
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-[#494551]/40">
+                <span className="text-[#cbc4d2]">Rate</span>
+                <span className="font-bold text-[#22C55E]">
+                  ₹{primaryClaimable.station?.basePricePerKWh || 14}/kWh (+100 Green Points)
+                </span>
+              </div>
 
-              <Button variant="ghost" fullWidth onClick={() => navigate('/driver/dashboard')}>
-                Pass on Slot
-              </Button>
-            </div>
-          </Card>
+              <div className="space-y-2 pt-2">
+                <Button
+                  variant="brand"
+                  fullWidth
+                  size="lg"
+                  loading={claimingSlotId === primaryClaimable.slot?.id}
+                  icon={ArrowRight}
+                  iconPosition="right"
+                  onClick={() => handleClaim(primaryClaimable.slot?.id)}
+                >
+                  Claim Bay {primaryClaimable.slot?.slotId} Now
+                </Button>
+
+                <Button variant="ghost" fullWidth onClick={() => navigate('/driver/dashboard')}>
+                  Pass on Slot
+                </Button>
+              </div>
+            </Card>
+          )}
 
           {/* Claim Confirmation Modal */}
           {claimedModal && (
@@ -92,12 +169,12 @@ export default function ClaimSlot() {
                 </div>
                 <h3 className="font-headline font-extrabold text-2xl text-white">Slot Claimed!</h3>
                 <p className="text-xs text-[#cbc4d2]">
-                  Bay A2 at MG Road Hub is locked for your vehicle for 15 minutes check-in window.
+                  Bay {claimedBooking?.slot?.slotId || 'A1'} is locked for your vehicle check-in window.
                 </p>
                 <Button
                   variant="brand"
                   fullWidth
-                  onClick={() => navigate('/driver/navigation/bkg-claim-99')}
+                  onClick={() => navigate(`/driver/navigation/${claimedBooking?._id || 'bkg-claim-99'}`)}
                 >
                   Start Route Navigation
                 </Button>

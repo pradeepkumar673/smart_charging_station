@@ -6,39 +6,84 @@ import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Stepper from '../components/ui/Stepper';
-import { Building2, User, Mail, Phone, Building, MapPin, Zap, DollarSign, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Building2, User, Mail, Phone, Building, ArrowRight, ArrowLeft } from 'lucide-react';
+import useAuth from '../hooks/useAuth';
+import useToast from '../hooks/useToast';
 
 export default function OwnerSignup() {
   const navigate = useNavigate();
+  const { registerOwner } = useAuth();
+  const { showToast } = useToast();
+
   const [currentStep, setCurrentStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     ownerName: '',
     businessEmail: '',
     phone: '',
     companyName: '',
-    stationName: '',
-    address: '',
-    slotsCount: '4',
-    chargerType: 'DC_FAST_150KW',
-    basePrice: '0.35',
+    gstNumber: '',
+    businessAddress: '',
     password: '',
     confirmPassword: '',
     agreeTerms: false,
   });
 
   const steps = [
-    { title: 'Owner Info', subtitle: 'Operator contact & company' },
-    { title: 'Station Hardware', subtitle: 'Location & charger specs' },
+    { title: 'Owner Info', subtitle: 'Operator contact' },
+    { title: 'Company Details', subtitle: 'Business & GST entity' },
     { title: 'Console Security', subtitle: 'Password & terms' },
   ];
 
-  const handleNext = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
-    } else {
-      navigate('/otp-verify');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      showToast({
+        title: 'Password Mismatch',
+        message: 'Passwords do not match. Please verify.',
+        type: 'error',
+      });
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const payload = {
+        name: formData.ownerName,
+        email: formData.businessEmail,
+        phone: formData.phone,
+        password: formData.password,
+        company: {
+          companyName: formData.companyName,
+          gstNumber: formData.gstNumber || '29AAAAA0000A1Z5',
+          businessAddress: formData.businessAddress || 'Bengaluru, Karnataka',
+        },
+      };
+
+      const user = await registerOwner(payload);
+      showToast({
+        title: 'Owner Registration Successful!',
+        message: `Welcome to ChargeFlow Console, ${user.name}!`,
+        type: 'success',
+      });
+
+      navigate('/owner/dashboard');
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Owner registration failed.';
+      showToast({
+        title: 'Registration Error',
+        message: errMsg,
+        type: 'error',
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -63,7 +108,7 @@ export default function OwnerSignup() {
                 <Building2 className="w-8 h-8" />
               </div>
             </div>
-            <h2 className="font-headline text-3xl font-extrabold text-white">Register Charging Station</h2>
+            <h2 className="font-headline text-3xl font-extrabold text-white">Register Station Owner Account</h2>
             <p className="text-sm text-[#cbc4d2]">
               Onboard your station hardware into the ChargeFlow autonomous grid.
             </p>
@@ -72,7 +117,7 @@ export default function OwnerSignup() {
           <Card className="border-[#2D8CFF]/30">
             <Stepper steps={steps} currentStep={currentStep} onStepClick={(step) => setCurrentStep(step)} />
 
-            <form onSubmit={handleNext} className="space-y-5 pt-2">
+            <form onSubmit={handleSubmit} className="space-y-5 pt-2">
               {/* STEP 1: Owner Details */}
               {currentStep === 1 && (
                 <div className="space-y-4 animate-fadeIn">
@@ -81,7 +126,7 @@ export default function OwnerSignup() {
                     name="ownerName"
                     value={formData.ownerName}
                     onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
-                    placeholder="Marcus Vance"
+                    placeholder="Aarav Sharma"
                     icon={User}
                     required
                   />
@@ -93,7 +138,7 @@ export default function OwnerSignup() {
                       name="businessEmail"
                       value={formData.businessEmail}
                       onChange={(e) => setFormData({ ...formData, businessEmail: e.target.value })}
-                      placeholder="mvance@powergrid.io"
+                      placeholder="owner@chargeflow.io"
                       icon={Mail}
                       required
                     />
@@ -104,83 +149,41 @@ export default function OwnerSignup() {
                       name="phone"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="+1 (555) 987-6543"
+                      placeholder="+919876543210"
                       icon={Phone}
                       required
                     />
                   </div>
+                </div>
+              )}
 
+              {/* STEP 2: Company Details */}
+              {currentStep === 2 && (
+                <div className="space-y-4 animate-fadeIn">
                   <Input
                     label="Company / Operating Entity Name"
                     name="companyName"
                     value={formData.companyName}
                     onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                    placeholder="VoltCharge Networks LLC"
+                    placeholder="GreenCharge Energy Pvt Ltd"
                     icon={Building}
                     required
                   />
-                </div>
-              )}
 
-              {/* STEP 2: First Station Details */}
-              {currentStep === 2 && (
-                <div className="space-y-4 animate-fadeIn">
                   <Input
-                    label="Primary Station Name"
-                    name="stationName"
-                    value={formData.stationName}
-                    onChange={(e) => setFormData({ ...formData, stationName: e.target.value })}
-                    placeholder="ChargeFlow Hub - Downtown Tech Park"
-                    required
+                    label="GST Number (Optional)"
+                    name="gstNumber"
+                    value={formData.gstNumber}
+                    onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value })}
+                    placeholder="29AAAAA0000A1Z5"
                   />
 
                   <Input
-                    label="Full Address / Location"
-                    name="address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="450 Innovation Way, Suite 100, San Jose, CA"
-                    icon={MapPin}
-                    required
-                  />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <Input
-                      label="Charging Slots"
-                      type="number"
-                      name="slotsCount"
-                      value={formData.slotsCount}
-                      onChange={(e) => setFormData({ ...formData, slotsCount: e.target.value })}
-                      placeholder="4"
-                      required
-                    />
-
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#cbc4d2]">
-                        Hardware Charger Type *
-                      </label>
-                      <select
-                        value={formData.chargerType}
-                        onChange={(e) => setFormData({ ...formData, chargerType: e.target.value })}
-                        className="w-full rounded-xl bg-[#1d1b20] border border-[#494551] text-[#e6e0e9] text-sm px-4 py-3 focus:outline-none focus:border-[#36D8FF] focus:ring-2 focus:ring-[#36D8FF]/20"
-                      >
-                        <option value="DC_FAST_150KW">DC Ultra-Fast (150kW - 350kW)</option>
-                        <option value="CCS2_COMBO">CCS2 Dual Connector</option>
-                        <option value="NACS_SUPERCHARGER">NACS Compatible Bay</option>
-                        <option value="AC_LEVEL_2">AC Level 2 (22kW)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <Input
-                    label="Base Energy Rate ($/kWh)"
-                    type="number"
-                    step="0.01"
-                    name="basePrice"
-                    value={formData.basePrice}
-                    onChange={(e) => setFormData({ ...formData, basePrice: e.target.value })}
-                    placeholder="0.35"
-                    icon={DollarSign}
+                    label="Business Address"
+                    name="businessAddress"
+                    value={formData.businessAddress}
+                    onChange={(e) => setFormData({ ...formData, businessAddress: e.target.value })}
+                    placeholder="100 Feet Road, Indiranagar, Bengaluru, KA"
                     required
                   />
                 </div>
@@ -219,7 +222,7 @@ export default function OwnerSignup() {
                         required
                       />
                       <span className="leading-relaxed">
-                        I agree to ChargeFlow Operator Terms, automated revenue settlement agreement, and station Digital Twin hardware integration guidelines.
+                        I agree to ChargeFlow Operator Terms and station Digital Twin hardware integration guidelines.
                       </span>
                     </label>
                   </div>
@@ -243,10 +246,11 @@ export default function OwnerSignup() {
                   type="submit"
                   variant="brand"
                   size="lg"
+                  loading={submitting}
                   icon={ArrowRight}
                   iconPosition="right"
                 >
-                  {currentStep === 3 ? 'Onboard Station' : 'Continue to Station Specs'}
+                  {currentStep === 3 ? 'Complete Owner Registration' : 'Continue to Next Step'}
                 </Button>
               </div>
             </form>

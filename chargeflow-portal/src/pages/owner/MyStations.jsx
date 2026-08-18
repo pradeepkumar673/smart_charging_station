@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import OwnerSidebar from '../../components/layout/OwnerSidebar';
 import OwnerHeader from '../../components/layout/OwnerHeader';
@@ -6,18 +6,85 @@ import Footer from '../../components/layout/Footer';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import Skeleton from '../../components/ui/Skeleton';
 import EmptyState from '../../components/states/EmptyState';
-import { Building2, Plus, Search, Star, MapPin, Zap, Activity, ArrowRight, X, PlusCircle } from 'lucide-react';
+import { Plus, MapPin, Activity, ArrowRight, X, PlusCircle } from 'lucide-react';
+import api from '../../services/api';
+import useToast from '../../hooks/useToast';
 
 export default function MyStations() {
+  const { showToast } = useToast();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [addModal, setAddModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [stations, setStations] = useState([]);
 
-  const stations = [
-    { id: 'stn-01', name: 'VoltHub Indiranagar', address: '100 Feet Road, Indiranagar, Bengaluru', bays: 8, revenue: '₹18,420', util: '82%', rating: 4.9, status: 'Operational', color: '#22C55E' },
-    { id: 'stn-02', name: 'VoltHub Whitefield', address: 'ITPL Main Road, Whitefield, Bengaluru', bays: 6, revenue: '₹14,800', util: '74%', rating: 4.8, status: 'Operational', color: '#22C55E' },
-    { id: 'stn-03', name: 'VoltHub Electronic City', address: 'Phase 1, Hosur Main Road, Bengaluru', bays: 4, revenue: '₹8,200', util: '48%', rating: 4.6, status: 'Attention Needed', color: '#ffb4ab' },
-  ];
+  const [form, setForm] = useState({
+    name: '',
+    address: '',
+    city: 'Bengaluru',
+    state: 'Karnataka',
+    pincode: '560001',
+    latitude: 12.9716,
+    longitude: 77.6412,
+    totalSlots: 6,
+    basePricePerKWh: 14.5,
+  });
+
+  const fetchMyStations = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/stations/my');
+      const list = response.data?.data?.stations || [];
+      setStations(list);
+    } catch (err) {
+      console.error('Failed to load owner stations:', err);
+      showToast({ title: 'Error', message: 'Could not load your stations list.', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    fetchMyStations();
+  }, [fetchMyStations]);
+
+  const handleCreateStation = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const payload = {
+        name: form.name,
+        address: form.address,
+        city: form.city,
+        state: form.state,
+        pincode: form.pincode,
+        location: {
+          type: 'Point',
+          coordinates: [Number(form.longitude) || 77.6412, Number(form.latitude) || 12.9716],
+        },
+        totalSlots: Number(form.totalSlots) || 6,
+        basePricePerKWh: Number(form.basePricePerKWh) || 14.5,
+        chargerTypes: ['DC', 'AC'],
+      };
+
+      await api.post('/stations', payload);
+      showToast({
+        title: 'Station Registered!',
+        message: 'Station and charging slots provisioned successfully.',
+        type: 'success',
+      });
+      setAddModal(false);
+      fetchMyStations();
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Failed to create station.';
+      showToast({ title: 'Registration Error', message: errMsg, type: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex">
@@ -40,7 +107,13 @@ export default function MyStations() {
           </div>
 
           {/* Station Grid */}
-          {stations.length === 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Skeleton className="h-64 rounded-2xl" />
+              <Skeleton className="h-64 rounded-2xl" />
+              <Skeleton className="h-64 rounded-2xl" />
+            </div>
+          ) : stations.length === 0 ? (
             <EmptyState
               icon={PlusCircle}
               title="No stations added"
@@ -50,56 +123,54 @@ export default function MyStations() {
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {stations.map((s) => (
+                <Card key={s._id} glow className="flex flex-col justify-between h-full space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#22C55E]/20 text-[#22C55E]">
+                          {s.isOperational ? 'Operational' : 'Maintenance'}
+                        </span>
+                        <h3 className="font-headline font-bold text-xl text-white mt-1">{s.name}</h3>
+                        <p className="text-xs text-[#948e9c] flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3.5 h-3.5 text-[#36D8FF]" /> {s.address}, {s.city}
+                        </p>
+                      </div>
+                    </div>
 
-            {stations.map((s) => (
-              <Card key={s.id} glow className="flex flex-col justify-between h-full space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={{ backgroundColor: `${s.color}20`, color: s.color }}>
-                        {s.status}
-                      </span>
-                      <h3 className="font-headline font-bold text-xl text-white mt-1">{s.name}</h3>
-                      <p className="text-xs text-[#948e9c] flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3.5 h-3.5 text-[#36D8FF]" /> {s.address}
-                      </p>
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#494551]/40 text-center text-xs">
+                      <div className="bg-[#1d1b20] p-2 rounded-xl border border-[#494551]/40">
+                        <span className="text-[9px] text-[#948e9c] uppercase block">Bays</span>
+                        <span className="font-bold text-white">{s.totalSlots || 6}</span>
+                      </div>
+                      <div className="bg-[#1d1b20] p-2 rounded-xl border border-[#494551]/40">
+                        <span className="text-[9px] text-[#948e9c] uppercase block">Tariff Rate</span>
+                        <span className="font-bold text-[#22C55E]">₹{s.basePricePerKWh}/kWh</span>
+                      </div>
+                      <div className="bg-[#1d1b20] p-2 rounded-xl border border-[#494551]/40">
+                        <span className="text-[9px] text-[#948e9c] uppercase block">Rating</span>
+                        <span className="font-bold text-[#e7c365]">★ 4.9</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#494551]/40 text-center text-xs">
-                    <div className="bg-[#1d1b20] p-2 rounded-xl border border-[#494551]/40">
-                      <span className="text-[9px] text-[#948e9c] uppercase block">Bays</span>
-                      <span className="font-bold text-white">{s.bays}</span>
-                    </div>
-                    <div className="bg-[#1d1b20] p-2 rounded-xl border border-[#494551]/40">
-                      <span className="text-[9px] text-[#948e9c] uppercase block">Revenue</span>
-                      <span className="font-bold text-[#22C55E]">{s.revenue}</span>
-                    </div>
-                    <div className="bg-[#1d1b20] p-2 rounded-xl border border-[#494551]/40">
-                      <span className="text-[9px] text-[#948e9c] uppercase block">Rating</span>
-                      <span className="font-bold text-[#e7c365]">★ {s.rating}</span>
-                    </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Link to="/owner/twin" className="flex-1">
+                      <Button variant="secondary" fullWidth size="sm" icon={Activity}>
+                        View Twin
+                      </Button>
+                    </Link>
+                    <Link to="/owner/slots" className="flex-1">
+                      <Button variant="brand" fullWidth size="sm" icon={ArrowRight} iconPosition="right">
+                        Manage Bays
+                      </Button>
+                    </Link>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-2">
-                  <Link to="/owner/twin" className="flex-1">
-                    <Button variant="secondary" fullWidth size="sm" icon={Activity}>
-                      View Twin
-                    </Button>
-                  </Link>
-                  <Link to="/owner/slots" className="flex-1">
-                    <Button variant="brand" fullWidth size="sm" icon={ArrowRight} iconPosition="right">
-                      Manage Bays
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
           )}
         </main>
-
 
         {/* Add Station Modal */}
         {addModal && (
@@ -112,16 +183,42 @@ export default function MyStations() {
                 </button>
               </div>
 
-              <div className="space-y-3">
-                <Input label="Station Name" placeholder="VoltHub Koramangala" required />
-                <Input label="Address" placeholder="8th Block Koramangala" required />
-                <Input label="Number of Bays" type="number" placeholder="6" required />
-                <Input label="Base Pricing (₹/kWh)" type="number" placeholder="14" required />
-              </div>
+              <form onSubmit={handleCreateStation} className="space-y-3">
+                <Input
+                  label="Station Name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="VoltHub Koramangala"
+                  required
+                />
+                <Input
+                  label="Address"
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  placeholder="8th Block Koramangala"
+                  required
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Total Bays"
+                    type="number"
+                    value={form.totalSlots}
+                    onChange={(e) => setForm({ ...form, totalSlots: e.target.value })}
+                    required
+                  />
+                  <Input
+                    label="Base Rate (₹/kWh)"
+                    type="number"
+                    value={form.basePricePerKWh}
+                    onChange={(e) => setForm({ ...form, basePricePerKWh: e.target.value })}
+                    required
+                  />
+                </div>
 
-              <Button variant="brand" fullWidth onClick={() => setAddModal(false)}>
-                Register & Initialize Hardware
-              </Button>
+                <Button type="submit" variant="brand" fullWidth loading={submitting}>
+                  Register & Auto-Provision Bays
+                </Button>
+              </form>
             </div>
           </div>
         )}

@@ -1,27 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import DriverSidebar from '../components/layout/DriverSidebar';
 import DriverHeader from '../components/layout/DriverHeader';
 import MapPanel from '../components/driver/MapPanel';
 import FilterChips from '../components/driver/FilterChips';
 import StationCard from '../components/driver/StationCard';
+import StationCardSkeleton from '../components/ui/StationCardSkeleton';
 import EnergyBadge from '../components/ui/EnergyBadge';
 import Button from '../components/ui/Button';
-import Card from '../components/ui/Card';
-import { Search, MapPin, List, Map as MapIcon, SlidersHorizontal, Star, Zap, Navigation, ArrowRight, X } from 'lucide-react';
+import EmptyState from '../components/states/EmptyState';
+import { Search, MapPin, List, Map as MapIcon, SlidersHorizontal, Star, ArrowRight, X } from 'lucide-react';
+import api from '../services/api';
+import useToast from '../hooks/useToast';
 
 export default function MapExplorer() {
+  const { showToast } = useToast();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState('map'); // 'map' or 'list'
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [selectedStation, setSelectedStation] = useState(null);
 
-  const stations = [
-    { id: 'stn-01', name: 'ChargeFlow Hub - MG Road', address: 'MG Road Metro Complex', rating: 4.9, reviewsCount: 184, distance: '2.4 km', eta: '8 min', slotsAvailable: 4, totalSlots: 8, price: '₹14/kWh', maxPower: '150 kW DC Fast', pinColor: '#22C55E', lat: 38, lng: 48, renewablePercent: 92 },
-    { id: 'stn-02', name: 'Indiranagar Supercharge', address: '100 Feet Rd, Indiranagar', rating: 4.8, reviewsCount: 96, distance: '1.1 km', eta: '4 min', slotsAvailable: 2, totalSlots: 6, price: '₹15/kWh', maxPower: '350 kW NACS', pinColor: '#2D8CFF', lat: 55, lng: 32, renewablePercent: 85 },
-    { id: 'stn-03', name: 'Koramangala Green Hub', address: '5th Block Koramangala', rating: 4.7, reviewsCount: 210, distance: '4.8 km', eta: '14 min', slotsAvailable: 5, totalSlots: 10, price: '₹12/kWh', maxPower: '60 kW CCS2', pinColor: '#22C55E', lat: 72, lng: 68, renewablePercent: 100 },
-    { id: 'stn-04', name: 'Whitefield Tech Bay', address: 'ITPL Main Road, Whitefield', rating: 4.6, reviewsCount: 78, distance: '8.2 km', eta: '22 min', slotsAvailable: 1, totalSlots: 8, price: '₹16/kWh', maxPower: '150 kW DC Fast', pinColor: '#F59E0B', lat: 25, lng: 80, renewablePercent: 78 },
-  ];
+  const [stations, setStations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedChargerType, setSelectedChargerType] = useState('');
+  const [availableNowOnly, setAvailableNowOnly] = useState(false);
+  const [renewableMin, setRenewableMin] = useState(0);
+
+  const fetchStations = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (searchQuery.trim()) params.name = searchQuery.trim();
+      if (selectedChargerType) params.chargerType = selectedChargerType;
+      if (availableNowOnly) params.availableNow = true;
+      if (renewableMin > 0) params.renewableMin = renewableMin;
+
+      const response = await api.get('/stations', { params });
+      const stationList = response.data?.data?.stations || [];
+      setStations(stationList);
+    } catch (err) {
+      console.error('Failed to fetch stations:', err);
+      showToast({
+        title: 'Network Error',
+        message: 'Could not load charging stations. Please check backend connection.',
+        type: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, selectedChargerType, availableNowOnly, renewableMin, showToast]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchStations();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [fetchStations]);
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex">
@@ -38,7 +73,9 @@ export default function MapExplorer() {
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#948e9c]" />
               <input
                 type="text"
-                placeholder="Search Bengaluru, station name, or landmark..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search station name or location in Bengaluru..."
                 className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#141218] border border-[#494551] text-xs text-white placeholder-[#948e9c] focus:outline-none focus:border-[#36D8FF]"
               />
             </div>
@@ -80,12 +117,39 @@ export default function MapExplorer() {
           </div>
 
           {/* Quick Filter Chips */}
-          <FilterChips />
+          <FilterChips
+            onSelectChargerType={(type) => setSelectedChargerType(type)}
+            onToggleAvailableNow={(val) => setAvailableNowOnly(val)}
+          />
         </div>
 
         {/* Main Explorer Body */}
         <div className="flex-1 relative overflow-hidden flex">
-          {viewMode === 'map' ? (
+          {loading ? (
+            <div className="w-full h-full p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto">
+              <StationCardSkeleton />
+              <StationCardSkeleton />
+              <StationCardSkeleton />
+              <StationCardSkeleton />
+              <StationCardSkeleton />
+              <StationCardSkeleton />
+            </div>
+          ) : stations.length === 0 ? (
+            <div className="w-full h-full flex items-center justify-center p-6">
+              <EmptyState
+                type="stations"
+                title="No Charging Stations Found"
+                description="We couldn't find any operational EV stations matching your active filter criteria."
+                actionLabel="Clear Filters"
+                onAction={() => {
+                  setSearchQuery('');
+                  setSelectedChargerType('');
+                  setAvailableNowOnly(false);
+                  setRenewableMin(0);
+                }}
+              />
+            </div>
+          ) : viewMode === 'map' ? (
             <div className="w-full h-full relative p-4">
               <MapPanel
                 stations={stations}
@@ -100,14 +164,14 @@ export default function MapExplorer() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-[#e7c365] flex items-center gap-1">
-                          <Star className="w-3.5 h-3.5 fill-current" /> {selectedStation.rating}
+                          <Star className="w-3.5 h-3.5 fill-current" /> 4.9
                         </span>
-                        <EnergyBadge renewablePercent={selectedStation.renewablePercent} />
+                        <EnergyBadge renewablePercent={selectedStation.renewableSharePct || 75} />
                       </div>
                       <h3 className="font-headline font-bold text-xl text-white mt-1">
                         {selectedStation.name}
                       </h3>
-                      <p className="text-xs text-[#948e9c]">{selectedStation.address}</p>
+                      <p className="text-xs text-[#948e9c]">{selectedStation.address}, {selectedStation.city}</p>
                     </div>
 
                     <button
@@ -119,18 +183,19 @@ export default function MapExplorer() {
                   </div>
 
                   <div className="flex items-center justify-between text-xs pt-2 border-t border-[#494551]/40">
-                    <span className="text-[#22C55E] font-bold">{selectedStation.slotsAvailable} Slots Available</span>
-                    <span className="text-white font-semibold">{selectedStation.price}</span>
-                    <span className="text-[#948e9c]">{selectedStation.distance} • {selectedStation.eta}</span>
+                    <span className="text-[#22C55E] font-bold">
+                      {selectedStation.availableSlotsCount || 0} Slots Available
+                    </span>
+                    <span className="text-white font-semibold">₹{selectedStation.basePricePerKWh}/kWh</span>
                   </div>
 
                   <div className="flex items-center gap-2 pt-2">
-                    <Link to={`/driver/station/${selectedStation.id}`} className="flex-1">
+                    <Link to={`/driver/station/${selectedStation._id || selectedStation.id}`} className="flex-1">
                       <Button variant="secondary" fullWidth size="sm">
                         View Details
                       </Button>
                     </Link>
-                    <Link to={`/driver/station/${selectedStation.id}/book`} className="flex-1">
+                    <Link to={`/driver/station/${selectedStation._id || selectedStation.id}/book`} className="flex-1">
                       <Button variant="brand" fullWidth size="sm" icon={ArrowRight} iconPosition="right">
                         Book Slot
                       </Button>
@@ -142,7 +207,7 @@ export default function MapExplorer() {
           ) : (
             <div className="w-full h-full overflow-y-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {stations.map((stn) => (
-                <StationCard key={stn.id} station={stn} />
+                <StationCard key={stn._id || stn.id} station={stn} />
               ))}
             </div>
           )}
@@ -164,46 +229,39 @@ export default function MapExplorer() {
                 </button>
               </div>
 
-              {/* Distance Slider */}
+              {/* Min Renewable % Filter */}
               <div className="space-y-2">
                 <div className="flex justify-between text-xs font-semibold text-[#cbc4d2]">
-                  <span>Max Radius</span>
-                  <span className="text-[#36D8FF]">10 km</span>
+                  <span>Minimum Solar/Wind Ratio</span>
+                  <span className="text-[#36D8FF]">{renewableMin}% Renewable</span>
                 </div>
-                <input type="range" min="1" max="25" defaultValue="10" className="w-full accent-[#36D8FF]" />
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="10"
+                  value={renewableMin}
+                  onChange={(e) => setRenewableMin(Number(e.target.value))}
+                  className="w-full accent-[#36D8FF]"
+                />
               </div>
 
-              {/* Connector Type */}
+              {/* Charger Type */}
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase text-[#cbc4d2]">Connector Standard</label>
+                <label className="text-xs font-semibold uppercase text-[#cbc4d2]">Charger Type</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {['CCS2 (Combo)', 'NACS (Tesla)', 'Type 2 AC', 'CHAdeMO'].map((type, idx) => (
+                  {['DC', 'AC', 'Fast', 'Rapid'].map((type) => (
                     <button
-                      key={idx}
+                      key={type}
                       type="button"
+                      onClick={() => setSelectedChargerType(selectedChargerType === type ? '' : type)}
                       className={`p-2.5 rounded-xl border text-xs font-medium text-left ${
-                        idx === 0 ? 'border-[#36D8FF] bg-[#36D8FF]/15 text-white' : 'border-[#494551] text-[#cbc4d2]'
+                        selectedChargerType === type
+                          ? 'border-[#36D8FF] bg-[#36D8FF]/15 text-white'
+                          : 'border-[#494551] text-[#cbc4d2]'
                       }`}
                     >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Minimum Rating */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase text-[#cbc4d2]">Minimum Rating</label>
-                <div className="flex items-center gap-2">
-                  {['3.5+', '4.0+', '4.5+', '4.8+'].map((r, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      className={`flex-1 py-2 rounded-xl border text-xs font-bold ${
-                        i === 2 ? 'border-[#e7c365] bg-[#e7c365]/20 text-[#e7c365]' : 'border-[#494551] text-[#948e9c]'
-                      }`}
-                    >
-                      {r}
+                      {type} Charger
                     </button>
                   ))}
                 </div>
@@ -211,7 +269,17 @@ export default function MapExplorer() {
             </div>
 
             <div className="flex items-center gap-3 pt-4 border-t border-[#494551]/40">
-              <Button variant="secondary" fullWidth onClick={() => setFilterDrawerOpen(false)}>
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedChargerType('');
+                  setAvailableNowOnly(false);
+                  setRenewableMin(0);
+                  setFilterDrawerOpen(false);
+                }}
+              >
                 Reset
               </Button>
               <Button variant="brand" fullWidth onClick={() => setFilterDrawerOpen(false)}>

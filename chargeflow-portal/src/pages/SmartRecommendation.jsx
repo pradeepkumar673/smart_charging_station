@@ -1,14 +1,61 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import Skeleton from '../components/ui/Skeleton';
 import EnergyBadge from '../components/ui/EnergyBadge';
-import { Sparkles, ArrowRight, CheckCircle2, MapPin, Zap, Clock, ShieldCheck } from 'lucide-react';
+import { Sparkles, ArrowRight } from 'lucide-react';
+import api from '../services/api';
+import useToast from '../hooks/useToast';
 
 export default function SmartRecommendation() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { showToast } = useToast();
+
+  const targetStationId = location.state?.stationId || '654321000000000000000001';
+
+  const [loading, setLoading] = useState(true);
+  const [targetStationInfo, setTargetStationInfo] = useState(null);
+  const [recommendations, setRecommendations] = useState([]);
+
+  useEffect(() => {
+    async function loadLoadBalancing() {
+      setLoading(true);
+      try {
+        // Fetch first station if target ID is default
+        let actualId = targetStationId;
+        if (actualId === '654321000000000000000001') {
+          const listRes = await api.get('/stations');
+          const stns = listRes.data?.data?.stations || [];
+          if (stns.length > 0) actualId = stns[0]._id;
+        }
+
+        const response = await api.get('/smart/load-balancing', {
+          params: { stationId: actualId },
+        });
+
+        const data = response.data?.data;
+        setTargetStationInfo(data?.targetStation || null);
+        setRecommendations(data?.recommendedStations || []);
+      } catch (err) {
+        console.error('Failed to load smart recommendation:', err);
+        showToast({
+          title: 'Smart Grid Error',
+          message: 'Could not load station congestion telemetry.',
+          type: 'error',
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadLoadBalancing();
+  }, [targetStationId, showToast]);
+
+  const recommended = recommendations.length > 0 ? recommendations[0] : null;
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex flex-col justify-between">
@@ -25,80 +72,95 @@ export default function SmartRecommendation() {
                 <Sparkles className="w-8 h-8 animate-pulse" />
               </div>
             </div>
-            <h2 className="font-headline text-3xl font-extrabold text-white">A Smarter Charging Option Nearby</h2>
+            <h2 className="font-headline text-3xl font-extrabold text-white">Community Load Balancing</h2>
             <p className="text-sm text-[#cbc4d2]">
-              Your current destination is experiencing peak demand. We found a faster, greener alternative.
+              Detecting grid congestion in real time. We recommend alternative stations with green bonuses.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Current Choice */}
-            <Card className="border-[#494551] opacity-80">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[#ffb4ab] mb-2">
-                Current Choice (Busy)
-              </div>
-              <h3 className="font-headline font-bold text-lg text-white">Indiranagar Hub</h3>
-              <p className="text-xs text-[#948e9c]">100 Feet Road, Indiranagar</p>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Skeleton className="h-64 rounded-2xl" />
+              <Skeleton className="h-64 rounded-2xl" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Current Choice */}
+              <Card className="border-[#494551] opacity-80">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#ffb4ab] mb-2">
+                  Target Station ({targetStationInfo?.currentUtilizationPct || 80}% Utilized)
+                </div>
+                <h3 className="font-headline font-bold text-lg text-white">
+                  {targetStationInfo?.name || 'Indiranagar Hub'}
+                </h3>
+                <p className="text-xs text-[#948e9c]">Current Utilization: High Congestion</p>
 
-              <div className="space-y-2 mt-4 pt-3 border-t border-[#494551]/40 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-[#948e9c]">Expected Wait</span>
-                  <span className="font-bold text-[#ffb4ab]">~25 Minutes</span>
+                <div className="space-y-2 mt-4 pt-3 border-t border-[#494551]/40 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-[#948e9c]">Status</span>
+                    <span className="font-bold text-[#ffb4ab]">High Demand</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#948e9c]">Energy Rate</span>
+                    <span className="font-semibold text-white">Standard Peak</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[#948e9c]">Energy Rate</span>
-                  <span className="font-semibold text-white">₹16 / kWh</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#948e9c]">Renewable Mix</span>
-                  <span className="text-[#cbc4d2]">72% Solar</span>
-                </div>
-              </div>
-            </Card>
+              </Card>
 
-            {/* Recommended Choice */}
-            <Card glow className="border-[#36D8FF] ring-2 ring-[#36D8FF]/30">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#22C55E] bg-[#22C55E]/15 px-2 py-0.5 rounded-full">
-                  AI Recommended
-                </span>
-                <span className="text-xs font-extrabold text-[#e7c365]">+150 Points</span>
-              </div>
-              <h3 className="font-headline font-bold text-lg text-white">ChargeFlow Hub - MG Road</h3>
-              <p className="text-xs text-[#948e9c]">2.4 km away (8 min drive)</p>
+              {/* Recommended Choice */}
+              {recommended ? (
+                <Card glow className="border-[#36D8FF] ring-2 ring-[#36D8FF]/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#22C55E] bg-[#22C55E]/15 px-2 py-0.5 rounded-full">
+                      AI Recommended
+                    </span>
+                    <span className="text-xs font-extrabold text-[#e7c365]">
+                      +{recommended.incentive?.greenPointsBonus || 100} Green Points
+                    </span>
+                  </div>
+                  <h3 className="font-headline font-bold text-lg text-white">{recommended.name}</h3>
+                  <p className="text-xs text-[#948e9c]">{recommended.address}</p>
 
-              <div className="space-y-2 mt-4 pt-3 border-t border-[#494551]/40 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-[#948e9c]">Available Bays</span>
-                  <span className="font-bold text-[#22C55E]">4 Bays Free (0 Wait)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#948e9c]">Energy Rate</span>
-                  <span className="font-bold text-[#22C55E]">₹14 / kWh (Cheaper)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#948e9c]">Renewable Mix</span>
-                  <EnergyBadge renewablePercent={92} />
-                </div>
-              </div>
-            </Card>
-          </div>
+                  <div className="space-y-2 mt-4 pt-3 border-t border-[#494551]/40 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-[#948e9c]">Available Bays</span>
+                      <span className="font-bold text-[#22C55E]">{recommended.availableSlotsCount} Bays Free</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#948e9c]">Tariff Rate</span>
+                      <span className="font-bold text-[#22C55E]">₹{recommended.basePricePerKWh} / kWh</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#948e9c]">Renewable Share</span>
+                      <EnergyBadge renewablePercent={recommended.renewableSharePct} />
+                    </div>
+                  </div>
+                </Card>
+              ) : (
+                <Card glow className="border-[#22C55E]/40 text-center py-8">
+                  <div className="text-sm font-bold text-[#22C55E] mb-1">Normal Grid Load</div>
+                  <p className="text-xs text-[#cbc4d2]">Target station has ample slot availability right now.</p>
+                </Card>
+              )}
+            </div>
+          )}
 
           <div className="space-y-3 pt-2">
-            <Button
-              variant="brand"
-              fullWidth
-              size="lg"
-              icon={ArrowRight}
-              iconPosition="right"
-              onClick={() => navigate('/driver/station/stn-01/book')}
-            >
-              Switch to MG Road Hub & Earn +150 Points
-            </Button>
+            {recommended && (
+              <Button
+                variant="brand"
+                fullWidth
+                size="lg"
+                icon={ArrowRight}
+                iconPosition="right"
+                onClick={() => navigate(`/driver/station/${recommended.id}/book`)}
+              >
+                Switch to {recommended.name} & Earn +100 Green Points
+              </Button>
+            )}
             <Button variant="ghost" fullWidth onClick={() => navigate('/driver/dashboard')}>
-              Keep My Current Station
+              Return to Dashboard
             </Button>
-            <p className="text-center text-xs text-[#948e9c]">The choice is always yours. No cancellation penalty applies.</p>
           </div>
         </div>
       </div>

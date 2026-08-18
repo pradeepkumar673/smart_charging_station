@@ -1,26 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import DriverSidebar from '../components/layout/DriverSidebar';
 import DriverHeader from '../components/layout/DriverHeader';
 import Footer from '../components/layout/Footer';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Bell, CalendarCheck, Zap, DollarSign, AlertCircle, CheckCircle2, ArrowRight, Trash2 } from 'lucide-react';
+import Skeleton from '../components/ui/Skeleton';
+import { Bell, CalendarCheck, Zap, DollarSign, AlertCircle, ArrowRight } from 'lucide-react';
+import api from '../services/api';
+import useToast from '../hooks/useToast';
 
 export default function Notifications() {
+  const { showToast } = useToast();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
 
-  const [notifications, setNotifications] = useState([
-    { id: 1, type: 'bookings', title: 'Booking Confirmed — ChargeFlow Hub MG Road', body: 'Bay A2 is reserved for your Tata Nexon EV today at 7:30 PM.', time: '10 min ago', unread: true, link: '/driver/bookings', icon: CalendarCheck, color: '#8B5CF6' },
-    { id: 2, type: 'charging', title: 'Charging Session Complete', body: 'Session #SES-9042 ended. 42.5 kWh delivered. Tell us how the station was!', time: '1 hour ago', unread: true, link: '/driver/session/ses-9042/summary', icon: Zap, color: '#22C55E' },
-    { id: 3, type: 'savings', title: 'Off-Peak Tariff Alert', body: 'Save ₹28 by booking EcoCharge HSR Hub after 9:30 PM tonight.', time: '3 hours ago', unread: true, link: '/driver/explore', icon: DollarSign, color: '#e7c365' },
-    { id: 4, type: 'alerts', title: 'No-Show Slot Available', body: 'A 150 kW DC Fast bay opened up at Koramangala Hub. Claim it within 8 minutes.', time: '5 hours ago', unread: true, link: '/driver/claim-slot', icon: AlertCircle, color: '#36D8FF' },
-    { id: 5, type: 'savings', title: '+170 Green Points Credited', body: 'Your 92% solar charging session earned +170 Green Points.', time: 'Yesterday', unread: false, link: '/driver/insights', icon: CheckCircle2, color: '#22C55E' },
-  ]);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const markAllRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, unread: false })));
+  const fetchNotifications = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/notifications');
+      const list = response.data?.data?.notifications || [];
+      setNotifications(list);
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const markAllRead = async () => {
+    try {
+      await api.patch('/notifications/read-all');
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      showToast({ title: 'Notifications', message: 'All notifications marked as read', type: 'info' });
+    } catch (err) {
+      showToast({ title: 'Error', message: 'Could not mark notifications as read', type: 'error' });
+    }
+  };
+
+  const getIcon = (type) => {
+    switch (type) {
+      case 'booking':
+        return { icon: CalendarCheck, color: '#8B5CF6' };
+      case 'charging':
+      case 'session':
+        return { icon: Zap, color: '#22C55E' };
+      case 'savings':
+        return { icon: DollarSign, color: '#e7c365' };
+      default:
+        return { icon: AlertCircle, color: '#36D8FF' };
+    }
   };
 
   const filtered = activeTab === 'all' ? notifications : notifications.filter((n) => n.type === activeTab);
@@ -48,10 +84,9 @@ export default function Notifications() {
           <div className="flex items-center gap-2 overflow-x-auto border-b border-[#494551]/40 pb-2">
             {[
               { id: 'all', label: 'All' },
-              { id: 'bookings', label: 'Bookings' },
+              { id: 'booking', label: 'Bookings' },
               { id: 'charging', label: 'Charging' },
-              { id: 'savings', label: 'Savings' },
-              { id: 'alerts', label: 'Station Alerts' },
+              { id: 'station', label: 'Station Alerts' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -69,34 +104,38 @@ export default function Notifications() {
 
           {/* Notifications Feed */}
           <div className="space-y-3">
-            {filtered.length > 0 ? (
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-full h-20 rounded-2xl" />)
+            ) : filtered.length > 0 ? (
               filtered.map((n) => {
-                const Icon = n.icon;
+                const { icon: Icon, color } = getIcon(n.type);
                 return (
                   <Card
-                    key={n.id}
+                    key={n._id || n.id}
                     className={`flex items-start justify-between gap-4 transition-all hover:border-[#cfbcff]/50 ${
-                      n.unread ? 'border-[#6750a4]/50 bg-[#211f24]' : 'opacity-80'
+                      !n.isRead ? 'border-[#6750a4]/50 bg-[#211f24]' : 'opacity-80'
                     }`}
                   >
                     <div className="flex items-start gap-3.5">
                       <div
                         className="p-2.5 rounded-xl shrink-0 mt-0.5"
-                        style={{ backgroundColor: `${n.color}20`, color: n.color }}
+                        style={{ backgroundColor: `${color}20`, color }}
                       >
                         <Icon className="w-5 h-5" />
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <h4 className="font-headline font-bold text-base text-white">{n.title}</h4>
-                          {n.unread && <span className="w-2 h-2 rounded-full bg-[#36D8FF]" />}
+                          {!n.isRead && <span className="w-2 h-2 rounded-full bg-[#36D8FF]" />}
                         </div>
-                        <p className="text-xs text-[#cbc4d2] leading-relaxed">{n.body}</p>
-                        <span className="text-[10px] text-[#948e9c] block pt-1">{n.time}</span>
+                        <p className="text-xs text-[#cbc4d2] leading-relaxed">{n.message || n.body}</p>
+                        <span className="text-[10px] text-[#948e9c] block pt-1">
+                          {new Date(n.createdAt).toLocaleString()}
+                        </span>
                       </div>
                     </div>
 
-                    <Link to={n.link} className="shrink-0 pt-1">
+                    <Link to="/driver/bookings" className="shrink-0 pt-1">
                       <Button variant="secondary" size="sm" icon={ArrowRight} />
                     </Link>
                   </Card>

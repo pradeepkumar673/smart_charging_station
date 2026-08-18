@@ -6,11 +6,17 @@ import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Stepper from '../components/ui/Stepper';
-import { Car, User, Mail, Phone, MapPin, Zap, ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Car, User, Mail, Phone, MapPin, Zap, ArrowRight, ArrowLeft } from 'lucide-react';
+import useAuth from '../hooks/useAuth';
+import useToast from '../hooks/useToast';
 
 export default function DriverSignup() {
   const navigate = useNavigate();
+  const { registerDriver } = useAuth();
+  const { showToast } = useToast();
+
   const [currentStep, setCurrentStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -33,13 +39,56 @@ export default function DriverSignup() {
     { title: 'Security', subtitle: 'Password & terms' },
   ];
 
-  const handleNext = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
-    } else {
-      // Final submit -> redirect to OTP verification
-      navigate('/otp-verify');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      showToast({
+        title: 'Password Mismatch',
+        message: 'Passwords do not match. Please verify.',
+        type: 'error',
+      });
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const payload = {
+        name: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        vehicle: {
+          make: formData.vehicleBrand,
+          model: formData.vehicleModel,
+          regNumber: formData.registrationNumber,
+          connectorType: formData.connectorType,
+          batteryCapacityKWh: Number(formData.batteryCapacity) || 60,
+        },
+      };
+
+      const user = await registerDriver(payload);
+      showToast({
+        title: 'Account Created!',
+        message: `Welcome to ChargeFlow, ${user.name}!`,
+        type: 'success',
+      });
+
+      navigate('/driver/dashboard');
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Driver registration failed.';
+      showToast({
+        title: 'Registration Error',
+        message: errMsg,
+        type: 'error',
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -73,7 +122,7 @@ export default function DriverSignup() {
           <Card glow>
             <Stepper steps={steps} currentStep={currentStep} onStepClick={(step) => setCurrentStep(step)} />
 
-            <form onSubmit={handleNext} className="space-y-5 pt-2">
+            <form onSubmit={handleSubmit} className="space-y-5 pt-2">
               {/* STEP 1: Personal Info */}
               {currentStep === 1 && (
                 <div className="space-y-4 animate-fadeIn">
@@ -82,7 +131,7 @@ export default function DriverSignup() {
                     name="fullName"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    placeholder="Alex Morgan"
+                    placeholder="Karan Verma"
                     icon={User}
                     required
                   />
@@ -94,7 +143,7 @@ export default function DriverSignup() {
                       name="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="alex@example.com"
+                      placeholder="driver@example.com"
                       icon={Mail}
                       required
                     />
@@ -105,7 +154,7 @@ export default function DriverSignup() {
                       name="phone"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="+1 (555) 234-5678"
+                      placeholder="+919876543210"
                       icon={Phone}
                       required
                     />
@@ -116,7 +165,7 @@ export default function DriverSignup() {
                     name="city"
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    placeholder="San Francisco, CA"
+                    placeholder="Bengaluru, KA"
                     icon={MapPin}
                     required
                   />
@@ -137,13 +186,12 @@ export default function DriverSignup() {
                         className="w-full rounded-xl bg-[#1d1b20] border border-[#494551] text-[#e6e0e9] text-sm px-4 py-3 focus:outline-none focus:border-[#cfbcff] focus:ring-2 focus:ring-[#cfbcff]/20"
                       >
                         <option value="Tesla">Tesla</option>
+                        <option value="Tata">Tata Motors</option>
+                        <option value="MG">MG Motors</option>
                         <option value="Hyundai">Hyundai / Genesis</option>
                         <option value="Kia">Kia</option>
                         <option value="BMW">BMW</option>
-                        <option value="Porsche">Porsche</option>
-                        <option value="Rivian">Rivian</option>
-                        <option value="Ford">Ford</option>
-                        <option value="Lucid">Lucid Motors</option>
+                        <option value="BYD">BYD</option>
                       </select>
                     </div>
 
@@ -152,7 +200,7 @@ export default function DriverSignup() {
                       name="vehicleModel"
                       value={formData.vehicleModel}
                       onChange={(e) => setFormData({ ...formData, vehicleModel: e.target.value })}
-                      placeholder="Model Y / Ioniq 5"
+                      placeholder="Nexon EV Max / Model Y"
                       required
                     />
                   </div>
@@ -179,7 +227,7 @@ export default function DriverSignup() {
                         className="w-full rounded-xl bg-[#1d1b20] border border-[#494551] text-[#e6e0e9] text-sm px-4 py-3 focus:outline-none focus:border-[#cfbcff] focus:ring-2 focus:ring-[#cfbcff]/20"
                       >
                         <option value="CCS2">CCS2 Ultra-Fast</option>
-                        <option value="NACS">NACS (Tesla standard)</option>
+                        <option value="NACS">NACS Standard</option>
                         <option value="Type2">Type 2 AC</option>
                         <option value="CHAdeMO">CHAdeMO</option>
                       </select>
@@ -187,11 +235,11 @@ export default function DriverSignup() {
                   </div>
 
                   <Input
-                    label="Vehicle License / VIN"
+                    label="Vehicle License / Registration"
                     name="registrationNumber"
                     value={formData.registrationNumber}
                     onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
-                    placeholder="e.g. 8XYZ901"
+                    placeholder="KA01EV1234"
                     required
                   />
                 </div>
@@ -230,7 +278,7 @@ export default function DriverSignup() {
                         required
                       />
                       <span className="leading-relaxed">
-                        I agree to ChargeFlow's <a href="#" className="text-[#cfbcff] underline">Terms of Service</a> and <a href="#" className="text-[#cfbcff] underline">Privacy Policy</a>, including automated ISO 15118 plug & charge session processing.
+                        I agree to ChargeFlow's <a href="#" className="text-[#cfbcff] underline">Terms of Service</a> and <a href="#" className="text-[#cfbcff] underline">Privacy Policy</a>.
                       </span>
                     </label>
                   </div>
@@ -254,6 +302,7 @@ export default function DriverSignup() {
                   type="submit"
                   variant="primary"
                   size="lg"
+                  loading={submitting}
                   icon={ArrowRight}
                   iconPosition="right"
                 >

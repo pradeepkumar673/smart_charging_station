@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import DriverSidebar from '../components/layout/DriverSidebar';
 import DriverHeader from '../components/layout/DriverHeader';
@@ -6,39 +6,49 @@ import Footer from '../components/layout/Footer';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import StationCard from '../components/driver/StationCard';
-import { StatCardSkeleton } from '../components/ui/StatCardSkeleton';
-import { StationCardSkeleton } from '../components/ui/StationCardSkeleton';
-import { getNearbyStations } from '../data/mockStations';
-import { Search, Zap, Leaf, ShieldCheck, Flame, CalendarCheck, MapPin, Navigation, ArrowRight, Sparkles, AlertTriangle } from 'lucide-react';
+import StationCardSkeleton from '../components/ui/StationCardSkeleton';
+import { Search, Zap, Leaf, CalendarCheck, MapPin, Navigation, ArrowRight, Sparkles, Flame } from 'lucide-react';
+import api from '../services/api';
+import useAuth from '../hooks/useAuth';
+import useToast from '../hooks/useToast';
 
 export default function DriverDashboard() {
+  const { user } = useAuth();
+  const { showToast } = useToast();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [nearbyStations, setNearbyStations] = useState([]);
+  const [activeReservation, setActiveReservation] = useState(null);
 
-  useEffect(() => {
-    getNearbyStations().then((data) => {
-      // Map mock data format to StationCard expectations if needed
-      const formatted = data.map(s => ({
-        id: s.id,
-        name: s.name,
-        address: s.address,
-        rating: s.rating,
-        reviewsCount: s.reviewCount,
-        distance: `${s.distanceKm} km`,
-        eta: `${Math.round(s.distanceKm * 3 + 2)} min`,
-        slotsAvailable: s.bays.filter(b => b.status === 'available').length,
-        totalSlots: s.bays.length,
-        price: `₹${s.pricePerKwh}/kWh`,
-        maxPower: `${s.powerKw} kW`,
-        renewablePercent: s.renewableShare,
-      }));
-      setNearbyStations(formatted);
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [stnRes, bkgRes] = await Promise.all([
+        api.get('/stations', { params: { limit: 3 } }),
+        api.get('/bookings/my'),
+      ]);
+
+      const stns = stnRes.data?.data?.stations || [];
+      setNearbyStations(stns);
+
+      const bkgs = bkgRes.data?.data?.bookings || [];
+      const upcoming = bkgs.find((b) => b.status === 'confirmed');
+      setActiveReservation(upcoming || null);
+    } catch (err) {
+      console.error('Failed to load driver dashboard:', err);
+    } finally {
       setLoading(false);
-    });
+    }
   }, []);
 
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  const vehicleName = user?.vehicle?.model
+    ? `${user.vehicle.brand || user.vehicle.make || ''} ${user.vehicle.model}`
+    : 'Tata Nexon EV';
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex">
@@ -65,7 +75,7 @@ export default function DriverDashboard() {
               </h2>
 
               <p className="text-sm text-[#cbc4d2] leading-relaxed">
-                4 ultra-fast charging bays are reserved for Tata Nexon EVs within 3 km with 92% solar grid mix.
+                Welcome back, {user?.name || 'EV Driver'}! Charging bays are ready for your {vehicleName} in Bengaluru.
               </p>
 
               {/* Location Search Bar */}
@@ -136,49 +146,45 @@ export default function DriverDashboard() {
             </Card>
           </div>
 
-          {/* Active Booking Countdown Card */}
-          <div className="bg-gradient-to-r from-[#211f24] to-[#1d1b20] border border-[#2D8CFF]/40 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
-            <div className="flex items-start gap-4">
-              <div className="p-3.5 rounded-2xl bg-[#2D8CFF]/20 text-[#36D8FF] shrink-0">
-                <CalendarCheck className="w-8 h-8" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#8B5CF6]/20 text-[#c084fc]">
-                    Active Reservation
-                  </span>
-                  <span className="text-xs text-[#948e9c]">ID #BKG-8821</span>
+          {/* Active Reservation Banner if available */}
+          {activeReservation && (
+            <div className="bg-gradient-to-r from-[#211f24] to-[#1d1b20] border border-[#2D8CFF]/40 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+              <div className="flex items-start gap-4">
+                <div className="p-3.5 rounded-2xl bg-[#2D8CFF]/20 text-[#36D8FF] shrink-0">
+                  <CalendarCheck className="w-8 h-8" />
                 </div>
-                <h3 className="font-headline font-bold text-xl text-white mt-1">
-                  ChargeFlow Hub - MG Road (Bay A2)
-                </h3>
-                <p className="text-xs text-[#cbc4d2] mt-0.5">
-                  Today • 7:30 PM - 8:15 PM (CCS2 150kW)
-                </p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#8B5CF6]/20 text-[#c084fc]">
+                      Active Reservation
+                    </span>
+                    <span className="text-xs text-[#948e9c]">ID #{activeReservation._id.slice(-6)}</span>
+                  </div>
+                  <h3 className="font-headline font-bold text-xl text-white mt-1">
+                    {activeReservation.station?.name} (Bay {activeReservation.slot?.slotId})
+                  </h3>
+                  <p className="text-xs text-[#cbc4d2] mt-0.5">
+                    Start Time: {new Date(activeReservation.startTime).toLocaleString()}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-[#494551]/40 pt-3 md:pt-0">
-              <div className="text-left md:text-right">
-                <div className="text-[10px] text-[#948e9c] uppercase tracking-wider">Check-in Opens In</div>
-                <div className="font-headline font-extrabold text-2xl text-[#36D8FF] animate-pulse">
-                  14m 32s
-                </div>
+              <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-[#494551]/40 pt-3 md:pt-0">
+                <Link to={`/driver/navigation/${activeReservation._id}`}>
+                  <Button variant="brand" size="md" icon={Navigation}>
+                    Start Route
+                  </Button>
+                </Link>
               </div>
-              <Link to="/driver/navigation/bkg-8821">
-                <Button variant="brand" size="md" icon={Navigation}>
-                  Start Route
-                </Button>
-              </Link>
             </div>
-          </div>
+          )}
 
           {/* Nearby Stations Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-headline font-bold text-xl text-white">Recommended Nearby Stations</h3>
-                <p className="text-xs text-[#948e9c]">Matched with your Tata Nexon EV battery connector & speed</p>
+                <p className="text-xs text-[#948e9c]">Matched with your {vehicleName} battery connector & speed</p>
               </div>
               <Link to="/driver/explore" className="text-xs font-bold text-[#cfbcff] hover:text-white flex items-center gap-1">
                 <span>View All Map</span>
@@ -190,26 +196,9 @@ export default function DriverDashboard() {
               {loading
                 ? Array.from({ length: 3 }).map((_, i) => <StationCardSkeleton key={i} />)
                 : nearbyStations.map((stn) => (
-                    <StationCard key={stn.id} station={stn} />
+                    <StationCard key={stn._id || stn.id} station={stn} />
                   ))}
             </div>
-
-          </div>
-
-          {/* Community Suggestion Banner */}
-          <div className="bg-[#211f24] border border-[#e7c365]/30 rounded-2xl p-5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-[#e7c365]/20 text-[#e7c365]">
-                <Sparkles className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="font-headline font-bold text-sm text-white">Off-Peak Charging Reward Bonus</h4>
-                <p className="text-xs text-[#cbc4d2]">Charge between 10:00 PM and 6:00 AM to earn 2x Green Points + ₹3/kWh discount.</p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm">
-              View Schedule
-            </Button>
           </div>
         </main>
 

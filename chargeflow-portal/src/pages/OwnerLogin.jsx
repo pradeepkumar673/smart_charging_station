@@ -5,19 +5,50 @@ import Footer from '../components/layout/Footer';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import { Building2, Mail, Lock, ArrowRight, Activity, ShieldAlert } from 'lucide-react';
+import { Building2, Mail, Lock, ArrowRight, Activity } from 'lucide-react';
+import useAuth from '../hooks/useAuth';
+import useToast from '../hooks/useToast';
 
 export default function OwnerLogin() {
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const { showToast } = useToast();
+
   const [formData, setFormData] = useState({
     businessEmail: '',
     password: '',
     rememberDevice: false,
   });
 
-  const handleSubmit = (e) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate('/otp-verify');
+    setSubmitting(true);
+
+    try {
+      const user = await login(formData.businessEmail, formData.password);
+      showToast({
+        title: 'Console Access Granted',
+        message: `Welcome back, ${user.name}! Redirecting to Owner Console...`,
+        type: 'success',
+      });
+
+      if (user.role === 'owner') {
+        navigate('/owner/dashboard');
+      } else {
+        navigate('/driver/dashboard');
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Login failed. Please check credentials.';
+      showToast({
+        title: 'Authentication Error',
+        message: errMsg,
+        type: 'error',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -44,12 +75,12 @@ export default function OwnerLogin() {
           <Card className="border-[#2D8CFF]/30 shadow-[#2D8CFF]/10">
             <form onSubmit={handleSubmit} className="space-y-5">
               <Input
-                label="Business Email or Phone"
-                type="text"
+                label="Business Email"
+                type="email"
                 name="businessEmail"
                 value={formData.businessEmail}
                 onChange={(e) => setFormData({ ...formData, businessEmail: e.target.value })}
-                placeholder="operator@stationgrid.com"
+                placeholder="owner1@chargeflow.io"
                 icon={Mail}
                 required
               />
@@ -89,6 +120,7 @@ export default function OwnerLogin() {
                 variant="brand"
                 fullWidth
                 size="lg"
+                loading={submitting}
                 icon={ArrowRight}
                 iconPosition="right"
               >

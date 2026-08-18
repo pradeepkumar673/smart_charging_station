@@ -13,6 +13,15 @@ export function useToast() {
     error: (message, duration) => addToast({ message, variant: "error", duration }),
     info: (message, duration) => addToast({ message, variant: "info", duration }),
     warning: (message, duration) => addToast({ message, variant: "warning", duration }),
+    showToast: (opts) =>
+      addToast({
+        title: opts.title,
+        message: opts.message || opts.title,
+        variant: opts.type === "error" ? "error" : opts.type === "success" ? "success" : "info",
+        duration: opts.duration,
+      }),
     dismiss: removeToast,
   };
 }
+
+export default useToast;

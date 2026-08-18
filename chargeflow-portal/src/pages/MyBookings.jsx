@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import DriverSidebar from '../components/layout/DriverSidebar';
 import DriverHeader from '../components/layout/DriverHeader';
@@ -7,33 +7,96 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/states/EmptyState';
 import { BookingCardSkeleton } from '../components/ui/BookingCardSkeleton';
-import { getDriverBookings } from '../data/mockBookings';
-import { CalendarCheck, Clock, Zap, MapPin, QrCode, Navigation, ArrowRight, CheckCircle2, XCircle, RotateCcw, X, CalendarX2 } from 'lucide-react';
+import { Zap, QrCode, Navigation, ArrowRight, CheckCircle2, XCircle, X, CalendarX2 } from 'lucide-react';
+import api from '../services/api';
+import useToast from '../hooks/useToast';
 
 export default function MyBookings() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
+
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming', 'ongoing', 'completed', 'cancelled'
   const [qrModal, setQrModal] = useState(false);
+  const [activeBookingForQr, setActiveBookingForQr] = useState(null);
   const [loading, setLoading] = useState(true);
   const [bookingsData, setBookingsData] = useState([]);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+
+  const fetchMyBookings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/bookings/my');
+      const list = response.data?.data?.bookings || [];
+      setBookingsData(list);
+    } catch (err) {
+      console.error('Failed to fetch bookings:', err);
+      showToast({
+        title: 'Error',
+        message: 'Could not load your charging bookings.',
+        type: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
 
   useEffect(() => {
-    getDriverBookings().then((data) => {
-      setBookingsData(data);
-      setLoading(false);
-    });
-  }, []);
+    fetchMyBookings();
+  }, [fetchMyBookings]);
+
+  const handleCancelBooking = async (bookingId) => {
+    setActionLoadingId(bookingId);
+    try {
+      await api.patch(`/bookings/${bookingId}/cancel`);
+      showToast({
+        title: 'Booking Cancelled',
+        message: 'Your slot reservation has been cancelled and freed.',
+        type: 'info',
+      });
+      fetchMyBookings();
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Cancellation failed.';
+      showToast({
+        title: 'Error',
+        message: errMsg,
+        type: 'error',
+      });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleCheckInBooking = async (bookingId) => {
+    setActionLoadingId(bookingId);
+    try {
+      await api.post(`/bookings/${bookingId}/checkin`);
+      showToast({
+        title: 'Checked In Successfully!',
+        message: 'Charging session initiated.',
+        type: 'success',
+      });
+      navigate('/driver/session/active');
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Check-in failed.';
+      showToast({
+        title: 'Check-in Error',
+        message: errMsg,
+        type: 'error',
+      });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   const getFilteredBookings = (status) => {
     return bookingsData.filter((b) => b.status === status);
   };
 
-  const upcomingList = getFilteredBookings('upcoming');
-  const ongoingList = getFilteredBookings('ongoing');
+  const upcomingList = getFilteredBookings('confirmed').filter(b => !b.isCheckedIn);
+  const ongoingList = getFilteredBookings('confirmed').filter(b => b.isCheckedIn);
   const completedList = getFilteredBookings('completed');
   const cancelledList = getFilteredBookings('cancelled');
-
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex">
@@ -97,31 +160,57 @@ export default function MyBookings() {
                     />
                   ) : (
                     upcomingList.map((b) => (
-                      <Card key={b.id} glow className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                      <Card key={b._id} glow className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#8B5CF6]/20 text-[#c084fc]">
-                              {b.status}
+                              Confirmed Reservation
                             </span>
-                            <span className="text-xs text-[#948e9c]">ID #{b.id}</span>
+                            <span className="text-xs text-[#948e9c]">ID #{b._id.slice(-6)}</span>
                           </div>
-                          <h3 className="font-headline font-bold text-xl text-white">{b.stationName}</h3>
-                          <p className="text-xs text-[#cbc4d2]">Bay {b.bayId} ({b.connector}) • {b.date} {b.time}</p>
+                          <h3 className="font-headline font-bold text-xl text-white">
+                            {b.station?.name || 'Charging Station'}
+                          </h3>
+                          <p className="text-xs text-[#cbc4d2]">
+                            Bay {b.slot?.slotId || 'A1'} ({b.slot?.connectorType || 'CCS2'}) • Start: {new Date(b.startTime).toLocaleString()}
+                          </p>
                         </div>
 
                         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-[#494551]/40 pt-3 md:pt-0">
                           <div className="text-left md:text-right">
                             <span className="text-[10px] text-[#948e9c] uppercase block">Est. Cost</span>
-                            <span className="font-extrabold text-sm text-[#36D8FF]">₹{b.priceEstimate}</span>
+                            <span className="font-extrabold text-sm text-[#36D8FF]">₹{b.estimatedCost}</span>
                           </div>
-                          <Button variant="secondary" size="sm" icon={QrCode} onClick={() => setQrModal(true)}>
+
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            icon={QrCode}
+                            onClick={() => {
+                              setActiveBookingForQr(b);
+                              setQrModal(true);
+                            }}
+                          >
                             QR Check-in
                           </Button>
-                          <Link to={`/driver/navigation/${b.id}`}>
-                            <Button variant="brand" size="sm" icon={Navigation}>
-                              Start Route
-                            </Button>
-                          </Link>
+
+                          <Button
+                            variant="brand"
+                            size="sm"
+                            loading={actionLoadingId === b._id}
+                            onClick={() => handleCheckInBooking(b._id)}
+                          >
+                            Check In
+                          </Button>
+
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            loading={actionLoadingId === b._id}
+                            onClick={() => handleCancelBooking(b._id)}
+                          >
+                            Cancel
+                          </Button>
                         </div>
                       </Card>
                     ))
@@ -139,20 +228,20 @@ export default function MyBookings() {
                     />
                   ) : (
                     ongoingList.map((b) => (
-                      <Card key={b.id} className="border-[#22C55E]/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                      <Card key={b._id} className="border-[#22C55E]/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-ping" />
                             <span className="text-xs font-bold text-[#22C55E] uppercase">Charging Active</span>
                           </div>
-                          <h3 className="font-headline font-bold text-xl text-white">{b.stationName}</h3>
-                          <p className="text-xs text-[#cbc4d2]">Bay {b.bayId} ({b.connector}) • {b.time}</p>
+                          <h3 className="font-headline font-bold text-xl text-white">{b.station?.name}</h3>
+                          <p className="text-xs text-[#cbc4d2]">Bay {b.slot?.slotId} • {b.durationMinutes} Mins Session</p>
                         </div>
 
                         <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
                           <div>
                             <span className="text-[10px] text-[#948e9c] uppercase block">Estimated Cost</span>
-                            <span className="font-bold text-sm text-white">₹{b.priceEstimate}</span>
+                            <span className="font-bold text-sm text-white">₹{b.estimatedCost}</span>
                           </div>
                           <Link to="/driver/session/active">
                             <Button variant="primary" size="sm" icon={ArrowRight} iconPosition="right">
@@ -174,21 +263,18 @@ export default function MyBookings() {
                     />
                   ) : (
                     completedList.map((b) => (
-                      <Card key={b.id} className="flex items-center justify-between text-xs">
+                      <Card key={b._id} className="flex items-center justify-between text-xs">
                         <div>
-                          <h4 className="font-headline font-bold text-base text-white">{b.stationName}</h4>
-                          <p className="text-[#948e9c]">Bay {b.bayId} ({b.connector}) • {b.date}</p>
+                          <h4 className="font-headline font-bold text-base text-white">{b.station?.name}</h4>
+                          <p className="text-[#948e9c]">
+                            Bay {b.slot?.slotId} • Completed on {new Date(b.updatedAt || b.endTime).toLocaleDateString()}
+                          </p>
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <span className="font-bold text-white block">₹{b.priceEstimate}</span>
-                            <span className="text-[#22C55E] font-semibold">+120 Green Points</span>
+                            <span className="font-bold text-white block">₹{b.actualCost || b.estimatedCost}</span>
+                            <span className="text-[#22C55E] font-semibold">+100 Green Points</span>
                           </div>
-                          <Link to={`/driver/session/${b.id}/summary`}>
-                            <Button variant="secondary" size="sm">
-                              Receipt
-                            </Button>
-                          </Link>
                         </div>
                       </Card>
                     ))
@@ -204,12 +290,12 @@ export default function MyBookings() {
                     />
                   ) : (
                     cancelledList.map((b) => (
-                      <Card key={b.id} className="opacity-70 flex items-center justify-between text-xs">
+                      <Card key={b._id} className="opacity-70 flex items-center justify-between text-xs">
                         <div>
-                          <h4 className="font-headline font-bold text-base text-white">{b.stationName}</h4>
-                          <p className="text-[#ffb4ab]">Cancelled • {b.date}</p>
+                          <h4 className="font-headline font-bold text-base text-white">{b.station?.name}</h4>
+                          <p className="text-[#ffb4ab]">Cancelled • Bay {b.slot?.slotId}</p>
                         </div>
-                        <span className="text-[#cbc4d2] font-medium">Refunded ₹{b.priceEstimate}</span>
+                        <span className="text-[#cbc4d2] font-medium">Refunded ₹{b.estimatedCost}</span>
                       </Card>
                     ))
                   )
@@ -217,7 +303,6 @@ export default function MyBookings() {
               </>
             )}
           </div>
-
         </main>
 
         {/* QR Code Modal */}
@@ -232,9 +317,13 @@ export default function MyBookings() {
               </div>
               <div className="bg-white p-4 rounded-2xl inline-block mx-auto">
                 <QrCode className="w-36 h-36 text-slate-950" />
-                <span className="block text-[10px] font-mono font-bold text-slate-800 mt-1">ID #BKG-8821</span>
+                <span className="block text-[10px] font-mono font-bold text-slate-800 mt-1">
+                  ID: {activeBookingForQr?._id || 'BKG-8821'}
+                </span>
               </div>
-              <p className="text-xs text-[#cbc4d2]">Scan at Bay A2 dispenser to authorize charge session automatically.</p>
+              <p className="text-xs text-[#cbc4d2]">
+                Scan at Bay {activeBookingForQr?.slot?.slotId || 'A1'} dispenser to authorize charging session.
+              </p>
             </div>
           </div>
         )}

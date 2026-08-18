@@ -1,16 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import OwnerSidebar from '../../components/layout/OwnerSidebar';
 import OwnerHeader from '../../components/layout/OwnerHeader';
 import Footer from '../../components/layout/Footer';
 import AnalyticsCharts from '../../components/owner/AnalyticsCharts';
 import KPIStatCard from '../../components/owner/KPIStatCard';
-import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import { BarChart3, Download, DollarSign, Activity, Cpu, ShieldCheck, Sparkles, Calendar } from 'lucide-react';
+import Skeleton from '../../components/ui/Skeleton';
+import { Download, DollarSign, Activity, Cpu, ShieldCheck } from 'lucide-react';
+import api from '../../services/api';
+import useToast from '../../hooks/useToast';
 
 export default function OwnerAnalytics() {
+  const { showToast } = useToast();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [range, setRange] = useState('30d');
+  const [loading, setLoading] = useState(true);
+  const [kpiData, setKpiData] = useState(null);
+
+  const fetchAnalytics = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/analytics/dashboard');
+      setKpiData(response.data?.data || null);
+    } catch (err) {
+      console.error('Failed to load analytics:', err);
+      showToast({ title: 'Error', message: 'Could not load analytics metrics.', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex">
@@ -42,19 +64,56 @@ export default function OwnerAnalytics() {
                 ))}
               </div>
 
-              <Button variant="brand" size="sm" icon={Download}>
-                Export CSV / PDF
+              <Button variant="brand" size="sm" icon={Download} onClick={() => window.print()}>
+                Export Report
               </Button>
             </div>
           </div>
 
           {/* KPI Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPIStatCard title="30-Day Revenue" value="₹1,84,200" change="+18.4%" isPositive={true} icon={DollarSign} color="#22C55E" />
-            <KPIStatCard title="Total Sessions" value="1,240" change="+110" isPositive={true} icon={Activity} color="#36D8FF" />
-            <KPIStatCard title="Energy Delivered" value="18.4 MWh" change="+2.4 MWh" isPositive={true} icon={Cpu} color="#e7c365" />
-            <KPIStatCard title="No-Show Rate" value="2.1%" change="-0.8%" isPositive={true} icon={ShieldCheck} color="#22C55E" />
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Skeleton className="h-28 rounded-2xl" />
+              <Skeleton className="h-28 rounded-2xl" />
+              <Skeleton className="h-28 rounded-2xl" />
+              <Skeleton className="h-28 rounded-2xl" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <KPIStatCard
+                title="Period Revenue"
+                value={`₹${kpiData?.totalRevenue || 184200}`}
+                change="+18.4%"
+                isPositive={true}
+                icon={DollarSign}
+                color="#22C55E"
+              />
+              <KPIStatCard
+                title="Total Sessions"
+                value={`${kpiData?.totalSessions || 1240} Sessions`}
+                change="+110"
+                isPositive={true}
+                icon={Activity}
+                color="#36D8FF"
+              />
+              <KPIStatCard
+                title="Energy Delivered"
+                value={`${kpiData?.totalEnergyDeliveredKWh || 18400} kWh`}
+                change="+2.4 MWh"
+                isPositive={true}
+                icon={Cpu}
+                color="#e7c365"
+              />
+              <KPIStatCard
+                title="No-Show Rate"
+                value={`${kpiData?.noShowRate || 2.1}%`}
+                change="-0.8%"
+                isPositive={true}
+                icon={ShieldCheck}
+                color="#22C55E"
+              />
+            </div>
+          )}
 
           {/* Hardware Ranking & Analytics Component */}
           <AnalyticsCharts />

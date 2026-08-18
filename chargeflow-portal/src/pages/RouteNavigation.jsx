@@ -1,22 +1,70 @@
-import React, { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import DriverSidebar from '../components/layout/DriverSidebar';
 import DriverHeader from '../components/layout/DriverHeader';
 import MapPanel from '../components/driver/MapPanel';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { ArrowLeft, Navigation, MapPin, Clock, BatteryCharging, ShieldCheck, Compass, ExternalLink, CornerUpRight, MoveRight } from 'lucide-react';
+import { ArrowLeft, Navigation, MapPin, BatteryCharging, ExternalLink, CornerUpRight, MoveRight, CheckCircle2 } from 'lucide-react';
+import api from '../services/api';
+import useToast from '../hooks/useToast';
 
 export default function RouteNavigation() {
   const { bookingId } = useParams();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [submittingCheckIn, setSubmittingCheckIn] = useState(false);
+  const [booking, setBooking] = useState(null);
+
+  useEffect(() => {
+    async function loadBooking() {
+      if (!bookingId) return;
+      try {
+        const response = await api.get('/bookings/my');
+        const list = response.data?.data?.bookings || [];
+        const found = list.find((b) => b._id === bookingId);
+        if (found) {
+          setBooking(found);
+        }
+      } catch (err) {
+        console.error('Failed to load booking for navigation:', err);
+      }
+    }
+    loadBooking();
+  }, [bookingId]);
+
+  const handleCheckInNow = async () => {
+    setSubmittingCheckIn(true);
+    try {
+      if (bookingId && bookingId !== 'bkg-8821') {
+        await api.post(`/bookings/${bookingId}/checkin`);
+      }
+      showToast({
+        title: 'Checked In Successfully!',
+        message: 'Charging session initialized. Connecting vehicle telemetry...',
+        type: 'success',
+      });
+      navigate('/driver/session/active');
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Check-in failed.';
+      showToast({
+        title: 'Check-in Error',
+        message: errMsg,
+        type: 'error',
+      });
+    } finally {
+      setSubmittingCheckIn(false);
+    }
+  };
 
   const directions = [
     { text: 'Head north on 100 Feet Road toward Indiranagar Metro', dist: '400 m', icon: MoveRight },
     { text: 'Turn right onto MG Road Flyover', dist: '1.2 km', icon: CornerUpRight },
     { text: 'Keep left at the fork toward Metro Station Complex', dist: '600 m', icon: MoveRight },
-    { text: 'Turn left into ChargeFlow Autonomous Station Hub (Bay A2)', dist: '200 m', icon: MapPin },
+    { text: 'Turn left into ChargeFlow Autonomous Station Hub', dist: '200 m', icon: MapPin },
   ];
 
   return (
@@ -32,18 +80,20 @@ export default function RouteNavigation() {
             <MapPanel
               showRoute={true}
               origin="Indiranagar, Bengaluru"
-              destination="ChargeFlow Hub - MG Road"
+              destination={booking?.station?.name || 'ChargeFlow Station Hub'}
             />
 
             {/* Top Floating Origin & Destination bar */}
             <div className="absolute top-4 left-4 right-4 max-w-md mx-auto bg-[#141218]/90 backdrop-blur-md border border-[#494551]/60 px-4 py-3 rounded-2xl flex items-center justify-between text-xs shadow-xl z-20">
               <div className="flex items-center gap-2">
-                <Link to="/driver/dashboard" className="p-1.5 rounded-lg bg-[#211f24] text-[#cbc4d2]">
+                <Link to="/driver/bookings" className="p-1.5 rounded-lg bg-[#211f24] text-[#cbc4d2]">
                   <ArrowLeft className="w-4 h-4" />
                 </Link>
                 <div>
-                  <div className="font-bold text-white">Route to Bay A2</div>
-                  <div className="text-[10px] text-[#948e9c]">MG Road Hub • ID #{bookingId || 'BKG-8821'}</div>
+                  <div className="font-bold text-white">Route to Bay {booking?.slot?.slotId || 'A1'}</div>
+                  <div className="text-[10px] text-[#948e9c]">
+                    {booking?.station?.name || 'MG Road Hub'} • ID #{bookingId ? bookingId.slice(-6) : '8821'}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 text-[#22C55E] bg-[#22C55E]/15 px-2.5 py-1 rounded-full font-semibold">
@@ -70,7 +120,7 @@ export default function RouteNavigation() {
 
               <div className="p-3 rounded-xl bg-[#211f24] border border-[#494551]/60 flex items-center justify-between text-xs">
                 <span className="text-[#cbc4d2]">Check-in Window</span>
-                <span className="font-bold text-[#22C55E]">Opens in 14m 32s</span>
+                <span className="font-bold text-[#22C55E]">Open Now (10m grace)</span>
               </div>
 
               {/* Launcher Buttons */}
@@ -79,10 +129,21 @@ export default function RouteNavigation() {
                   variant="brand"
                   fullWidth
                   size="lg"
+                  loading={submittingCheckIn}
+                  icon={CheckCircle2}
+                  onClick={handleCheckInNow}
+                >
+                  Arrived & Check In Now
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  size="md"
                   icon={Navigation}
                   onClick={() => setIsNavigating(!isNavigating)}
                 >
-                  {isNavigating ? 'Guidance Active...' : 'Start Turn-by-Turn Navigation'}
+                  {isNavigating ? 'Guidance Active...' : 'Start Navigation'}
                 </Button>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">

@@ -3,19 +3,43 @@ import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Card from '../components/ui/Card';
-/*pradeep*/
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { KeyRound, Mail, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import useAuth from '../hooks/useAuth';
+import useToast from '../hooks/useToast';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
+  const { forgotPassword } = useAuth();
+  const { showToast } = useToast();
+
   const [identifier, setIdentifier] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitting(true);
+
+    try {
+      await forgotPassword(identifier);
+      setSubmitted(true);
+      showToast({
+        title: 'OTP Issued',
+        message: `If an account with ${identifier} exists, an OTP code has been generated.`,
+        type: 'info',
+      });
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Failed to issue OTP.';
+      showToast({
+        title: 'Error',
+        message: errMsg,
+        type: 'error',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -35,7 +59,7 @@ export default function ForgotPassword() {
             </div>
             <h2 className="font-headline text-3xl font-extrabold text-white">Reset Password</h2>
             <p className="text-sm text-[#cbc4d2]">
-              Enter your email or phone to receive a 6-digit verification code.
+              Enter your email to receive a 6-digit verification code.
             </p>
           </div>
 
@@ -43,11 +67,11 @@ export default function ForgotPassword() {
             {!submitted ? (
               <form onSubmit={handleSubmit} className="space-y-5">
                 <Input
-                  label="Registered Email or Mobile"
-                  type="text"
+                  label="Registered Email Address"
+                  type="email"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="name@example.com or +1 555-0192"
+                  placeholder="driver1@chargeflow.io"
                   icon={Mail}
                   required
                 />
@@ -57,6 +81,7 @@ export default function ForgotPassword() {
                   variant="primary"
                   fullWidth
                   size="lg"
+                  loading={submitting}
                   icon={ArrowRight}
                   iconPosition="right"
                 >
@@ -70,14 +95,14 @@ export default function ForgotPassword() {
                 </div>
                 <h3 className="font-headline font-bold text-xl text-white">Verification Code Sent</h3>
                 <p className="text-xs text-[#cbc4d2] leading-relaxed">
-                  We've sent a 6-digit verification code to <span className="text-[#cfbcff] font-semibold">{identifier || 'your email/phone'}</span>.
+                  We've issued a 6-digit verification code for <span className="text-[#cfbcff] font-semibold">{identifier}</span>.
                 </p>
                 <div className="pt-2">
                   <Button
                     variant="primary"
                     fullWidth
                     size="lg"
-                    onClick={() => navigate('/otp-verify')}
+                    onClick={() => navigate('/otp-verify', { state: { email: identifier } })}
                     icon={ArrowRight}
                     iconPosition="right"
                   >
