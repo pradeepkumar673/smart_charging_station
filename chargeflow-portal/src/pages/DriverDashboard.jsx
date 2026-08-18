@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import DriverSidebar from '../components/layout/DriverSidebar';
 import DriverHeader from '../components/layout/DriverHeader';
 import Footer from '../components/layout/Footer';
-import Card from '../ui/Card';
-import Button from '../ui/Button';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 import StationCard from '../components/driver/StationCard';
 import { Search, Zap, Leaf, ShieldCheck, Flame, CalendarCheck, MapPin, Navigation, ArrowRight, Sparkles, AlertTriangle } from 'lucide-react';
 

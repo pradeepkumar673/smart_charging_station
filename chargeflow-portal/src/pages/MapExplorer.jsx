@@ -5,9 +5,9 @@ import DriverHeader from '../components/layout/DriverHeader';
 import MapPanel from '../components/driver/MapPanel';
 import FilterChips from '../components/driver/FilterChips';
 import StationCard from '../components/driver/StationCard';
-import EnergyBadge from '../ui/EnergyBadge';
-import Button from '../ui/Button';
-import Card from '../ui/Card';
+import EnergyBadge from '../components/ui/EnergyBadge';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 import { Search, MapPin, List, Map as MapIcon, SlidersHorizontal, Star, Zap, Navigation, ArrowRight, X } from 'lucide-react';
 
 export default function MapExplorer() {
