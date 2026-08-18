@@ -20,6 +20,11 @@ const userRoutes = require("./routes/user.routes");
 const stationRoutes = require("./routes/station.routes");
 const slotRoutes = require("./routes/slot.routes");
 const bookingRoutes = require("./routes/booking.routes");
+const sessionRoutes = require("./routes/session.routes");
+const smartRoutes = require("./routes/smart.routes");
+const feedbackRoutes = require("./routes/feedback.routes");
+const notificationRoutes = require("./routes/notification.routes");
+const analyticsRoutes = require("./routes/analytics.routes");
 
 const app = express();
 const server = http.createServer(app);
@@ -64,6 +69,16 @@ app.use("/api/v1/users", userRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/v1/bookings", bookingRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/v1/sessions", sessionRoutes);
+app.use("/api/sessions", sessionRoutes);
+app.use("/api/v1/smart", smartRoutes);
+app.use("/api/smart", smartRoutes);
+app.use("/api/v1/feedback", feedbackRoutes);
+app.use("/api/feedback", feedbackRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/v1/analytics", analyticsRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 // --- Socket.io ---
 const io = new Server(server, {
