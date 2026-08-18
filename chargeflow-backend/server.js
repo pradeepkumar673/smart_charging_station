@@ -11,8 +11,8 @@ const rateLimit = require("express-rate-limit");
 const { Server } = require("socket.io");
 
 const connectDB = require("./config/db");
-const errorHandler = require("./middleware/errorHandler");
-const notFound = require("./middleware/notFound");
+const AppError = require("./utils/AppError");
+const globalErrorHandler = require("./middleware/error.middleware");
 const initSocket = require("./sockets");
 
 const authRoutes = require("./routes/auth.routes");
@@ -44,7 +44,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // --- Health check ---
-app.get("/", (req, res) => {
+app.get(["/", "/api/v1/health"], (req, res) => {
   res.status(200).json({
     success: true,
     message: "ChargeFlow API is running",
@@ -53,7 +53,8 @@ app.get("/", (req, res) => {
 });
 
 // --- Routes ---
-app.use("/api/auth", authRoutes);
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/auth", authRoutes); // alias for backwards compatibility
 app.use("/api/users", userRoutes);
 app.use("/api/stations", stationRoutes);
 app.use("/api/bookings", bookingRoutes);
@@ -68,9 +69,13 @@ const io = new Server(server, {
 initSocket(io);
 app.set("io", io);
 
-// --- Error handling (must be last) ---
-app.use(notFound);
-app.use(errorHandler);
+// --- 404 handler for unknown routes ---
+app.all("*", (req, res, next) => {
+  next(new AppError(`Route ${req.originalUrl} not found`, 404));
+});
+
+// --- Global error handler (must be last) ---
+app.use(globalErrorHandler);
 
 // --- Start server ---
 const PORT = process.env.PORT || 5000;
@@ -85,3 +90,5 @@ process.on("unhandledRejection", (err) => {
   console.error(`Unhandled Rejection: ${err.message}`);
   server.close(() => process.exit(1));
 });
+
+module.exports = app;

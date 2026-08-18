@@ -68,6 +68,6 @@ const sessionSchema = new mongoose.Schema(
 // --- Indexes ---
 sessionSchema.index({ user: 1 });
 sessionSchema.index({ status: 1 });
-sessionSchema.index({ booking: 1 }, { unique: true });
+
 
 module.exports = mongoose.model("Session", sessionSchema);

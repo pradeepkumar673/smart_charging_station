@@ -1,13 +1,21 @@
-// utils/apiResponse.js
-// Standardized success response helper so every controller returns
-// the same shape: { success, message, data }
+/**
+ * Sends a consistently-shaped JSON response across the whole API.
+ *
+ * Success:
+ *   { success: true, message, data }
+ * Failure:
+ *   { success: false, message, errors }
+ */
+const sendResponse = (res, { statusCode = 200, success = true, message = '', data = null, errors = undefined }) => {
+  const body = { success, message };
 
-function sendResponse(res, statusCode, message, data = null) {
-  return res.status(statusCode).json({
-    success: true,
-    message,
-    data,
-  });
-}
+  if (success) {
+    body.data = data ?? {};
+  } else {
+    body.errors = errors ?? [];
+  }
+
+  return res.status(statusCode).json(body);
+};
 
 module.exports = { sendResponse };

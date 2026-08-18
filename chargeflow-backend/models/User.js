@@ -7,10 +7,12 @@ const vehicleSchema = new mongoose.Schema(
   {
     brand: { type: String, trim: true },
     model: { type: String, trim: true },
+    make: { type: String, trim: true },
+    regNumber: { type: String, trim: true },
     batteryCapacityKWh: { type: Number, min: 0 },
     connectorType: {
       type: String,
-      enum: ["CCS2", "Type2", "CHAdeMO", "GBT"],
+      enum: ["CCS2", "Type2", "CHAdeMO", "GBT", "NACS", "Other"],
     },
     registrationNumber: { type: String, trim: true, uppercase: true },
   },
@@ -22,6 +24,7 @@ const companySchema = new mongoose.Schema(
     companyName: { type: String, trim: true },
     gstNumber: { type: String, trim: true, uppercase: true },
     contactEmail: { type: String, trim: true, lowercase: true },
+    businessAddress: { type: String, trim: true },
   },
   { _id: false }
 );
@@ -56,7 +59,6 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
-      match: [/^[0-9]{10}$/, "Please provide a valid 10-digit phone number"],
     },
     vehicle: {
       type: vehicleSchema,
@@ -70,6 +72,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
     resetPasswordToken: {
       type: String,
       select: false,
@@ -82,7 +88,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       select: false,
     },
-    otpExpire: {
+    otpExpiresAt: {
+      type: Date,
+      select: false,
+    },
+    otpVerifiedAt: {
       type: Date,
       select: false,
     },
@@ -92,7 +102,6 @@ const userSchema = new mongoose.Schema(
 
 // --- Indexes ---
 userSchema.index({ role: 1 });
-
 
 // --- Hooks ---
 userSchema.pre("save", async function hashPassword(next) {
@@ -118,6 +127,18 @@ userSchema.methods.generatePasswordResetToken = function generatePasswordResetTo
   this.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
 
   return resetToken; // plain token — only this gets emailed to the user
+};
+
+userSchema.methods.toSafeObject = function toSafeObject() {
+  const obj = this.toObject();
+  delete obj.password;
+  delete obj.otp;
+  delete obj.otpExpiresAt;
+  delete obj.otpVerifiedAt;
+  delete obj.resetPasswordToken;
+  delete obj.resetPasswordExpire;
+  delete obj.__v;
+  return obj;
 };
 
 // --- Static methods ---

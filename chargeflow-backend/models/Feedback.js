@@ -46,6 +46,6 @@ const feedbackSchema = new mongoose.Schema(
 // --- Indexes ---
 feedbackSchema.index({ station: 1 });
 feedbackSchema.index({ user: 1 });
-feedbackSchema.index({ session: 1 }, { unique: true });
+
 
 module.exports = mongoose.model("Feedback", feedbackSchema);
