@@ -85,39 +85,39 @@ export default function OwnerDashboard() {
               <>
                 <KPIStatCard
                   title="Total Revenue"
-                  value={`₹${kpiData?.totalRevenue || 18420}`}
-                  change="+14.2%"
+                  value={`₹${kpiData?.totalRevenue ?? 0}`}
+                  change="Revenue"
                   isPositive={true}
                   icon={DollarSign}
                   color="#22C55E"
                 />
                 <KPIStatCard
                   title="Utilization"
-                  value={`${kpiData?.utilizationPct || 82}%`}
-                  change="+6.8%"
+                  value={`${kpiData?.averageUtilization ?? 0}%`}
+                  change="Active Bays"
                   isPositive={true}
                   icon={Activity}
                   color="#36D8FF"
                 />
                 <KPIStatCard
                   title="Active Sessions"
-                  value={`${kpiData?.totalSessions || 6} Sessions`}
-                  change="Live"
+                  value={`${kpiData?.totalSessions ?? 0} Sessions`}
+                  change="Completed"
                   isPositive={true}
                   icon={Zap}
                   color="#6750a4"
                 />
                 <KPIStatCard
                   title="Energy Delivered"
-                  value={`${kpiData?.totalEnergyDeliveredKWh || 1240} kWh`}
-                  change="+180 kWh"
+                  value={`${kpiData?.totalEnergyDelivered ?? 0} kWh`}
+                  change="Total Power"
                   isPositive={true}
                   icon={Cpu}
                   color="#e7c365"
                 />
                 <KPIStatCard
                   title="Rating"
-                  value={`${kpiData?.averageRating || 4.9} ★`}
+                  value={`${kpiData?.averageDriverRating ?? 5.0} ★`}
                   change="Customer CSAT"
                   isPositive={true}
                   icon={ShieldCheck}
@@ -169,7 +169,7 @@ export default function OwnerDashboard() {
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-[#494551]/30">
                     <span className="text-[#948e9c]">Customer CSAT</span>
-                    <span className="font-bold text-[#e7c365]">{kpiData?.averageRating || 4.9} / 5.0 ★</span>
+                    <span className="font-bold text-[#e7c365]">{kpiData?.averageDriverRating ?? 5.0} / 5.0 ★</span>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-[#494551]/30">
                     <span className="text-[#948e9c]">Grid Status</span>

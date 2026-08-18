@@ -39,7 +39,7 @@ export default function RouteNavigation() {
   const handleCheckInNow = async () => {
     setSubmittingCheckIn(true);
     try {
-      if (bookingId && bookingId !== 'bkg-8821') {
+      if (bookingId) {
         await api.post(`/bookings/${bookingId}/checkin`);
       }
       showToast({

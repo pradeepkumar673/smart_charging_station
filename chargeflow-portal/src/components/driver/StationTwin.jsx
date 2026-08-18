@@ -15,7 +15,7 @@ export default function StationTwin({ stationId, selectedBayId, onSelectBay }) {
       setLoading(true);
       try {
         const response = await api.get(`/stations/${stationId}/twin`);
-        const { slots, counts } = response.data?.data || {};
+        const { slots, summary: counts } = response.data?.data || {};
         if (slots) {
           const mappedSlots = slots.map((s, idx) => ({
             id: s._id || s.slotId,
@@ -99,12 +99,7 @@ export default function StationTwin({ stationId, selectedBayId, onSelectBay }) {
     return <TwinSkeleton />;
   }
 
-  const displayBays = bays.length > 0 ? bays : [
-    { id: 'A1', slotId: 'A1', name: 'Bay A1', type: '150 kW DC Fast', status: 'available', recommended: true },
-    { id: 'A2', slotId: 'A2', name: 'Bay A2', type: '150 kW DC Fast', status: 'available' },
-    { id: 'A3', slotId: 'A3', name: 'Bay A3', type: '60 kW DC Fast', status: 'occupied' },
-    { id: 'A4', slotId: 'A4', name: 'Bay A4', type: '22 kW AC Type 2', status: 'reserved' },
-  ];
+  const displayBays = bays;
 
   return (
     <div className="w-full space-y-4">

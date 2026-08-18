@@ -23,6 +23,46 @@ export default function MyBookings() {
   const [bookingsData, setBookingsData] = useState([]);
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
+  const [rescheduleModal, setRescheduleModal] = useState(false);
+  const [rescheduleBookingId, setRescheduleBookingId] = useState(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [rescheduleDuration, setRescheduleDuration] = useState(45);
+  const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false);
+
+  const handleRescheduleBooking = async (e) => {
+    e.preventDefault();
+    if (!rescheduleBookingId) return;
+    setRescheduleSubmitting(true);
+    try {
+      const [hours, mins] = rescheduleTime.split(':');
+      const startDateTime = new Date(rescheduleDate);
+      startDateTime.setHours(Number(hours) || 12, Number(mins) || 0, 0, 0);
+
+      await api.patch(`/bookings/${rescheduleBookingId}/reschedule`, {
+        newStartTime: startDateTime.toISOString(),
+        newDurationMinutes: Number(rescheduleDuration),
+      });
+
+      showToast({
+        title: 'Booking Rescheduled',
+        message: 'Your reservation has been rescheduled successfully.',
+        type: 'success',
+      });
+      setRescheduleModal(false);
+      fetchMyBookings();
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Rescheduling failed.';
+      showToast({
+        title: 'Reschedule Error',
+        message: errMsg,
+        type: 'error',
+      });
+    } finally {
+      setRescheduleSubmitting(false);
+    }
+  };
+
   const fetchMyBookings = useCallback(async () => {
     setLoading(true);
     try {
@@ -182,7 +222,7 @@ export default function MyBookings() {
                             <span className="font-extrabold text-sm text-[#36D8FF]">₹{b.estimatedCost}</span>
                           </div>
 
-                          <Button
+                           <Button
                             variant="secondary"
                             size="sm"
                             icon={QrCode}
@@ -192,6 +232,20 @@ export default function MyBookings() {
                             }}
                           >
                             QR Check-in
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setRescheduleBookingId(b._id);
+                              setRescheduleDate(new Date(b.startTime).toISOString().split('T')[0]);
+                              setRescheduleTime(new Date(b.startTime).toTimeString().slice(0, 5));
+                              setRescheduleDuration(b.durationMinutes || 45);
+                              setRescheduleModal(true);
+                            }}
+                          >
+                            Reschedule
                           </Button>
 
                           <Button
@@ -324,6 +378,62 @@ export default function MyBookings() {
               <p className="text-xs text-[#cbc4d2]">
                 Scan at Bay {activeBookingForQr?.slot?.slotId || 'A1'} dispenser to authorize charging session.
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Reschedule Modal */}
+        {rescheduleModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+            <div className="bg-[#1d1b20] border border-[#494551] rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+              <div className="flex justify-between items-center border-b border-[#494551]/40 pb-3">
+                <h3 className="font-headline font-bold text-lg text-white">Reschedule Reservation</h3>
+                <button onClick={() => setRescheduleModal(false)} className="p-1 text-[#948e9c] hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleRescheduleBooking} className="space-y-4 text-left">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase text-[#cbc4d2]">New Date</label>
+                  <input
+                    type="date"
+                    value={rescheduleDate}
+                    onChange={(e) => setRescheduleDate(e.target.value)}
+                    className="w-full rounded-xl bg-[#141218] border border-[#494551] text-white text-xs px-4 py-3 focus:outline-none focus:border-[#36D8FF]"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase text-[#cbc4d2]">New Start Time</label>
+                  <input
+                    type="time"
+                    value={rescheduleTime}
+                    onChange={(e) => setRescheduleTime(e.target.value)}
+                    className="w-full rounded-xl bg-[#141218] border border-[#494551] text-white text-xs px-4 py-3 focus:outline-none focus:border-[#36D8FF]"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase text-[#cbc4d2]">Duration (Minutes)</label>
+                  <select
+                    value={rescheduleDuration}
+                    onChange={(e) => setRescheduleDuration(Number(e.target.value))}
+                    className="w-full rounded-xl bg-[#141218] border border-[#494551] text-white text-xs px-4 py-3 focus:outline-none focus:border-[#36D8FF]"
+                  >
+                    <option value={30}>30 Minutes</option>
+                    <option value={45}>45 Minutes</option>
+                    <option value={60}>60 Minutes</option>
+                    <option value={90}>90 Minutes</option>
+                  </select>
+                </div>
+
+                <Button type="submit" variant="brand" fullWidth loading={rescheduleSubmitting}>
+                  Confirm Reschedule
+                </Button>
+              </form>
             </div>
           </div>
         )}

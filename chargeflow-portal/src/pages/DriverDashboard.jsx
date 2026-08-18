@@ -20,6 +20,13 @@ export default function DriverDashboard() {
   const [loading, setLoading] = useState(true);
   const [nearbyStations, setNearbyStations] = useState([]);
   const [activeReservation, setActiveReservation] = useState(null);
+  const [stats, setStats] = useState({
+    greenPoints: 0,
+    co2Avoided: 0,
+    totalCharged: 0,
+    streak: 0,
+    sessionsCount: 0,
+  });
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
@@ -33,8 +40,22 @@ export default function DriverDashboard() {
       setNearbyStations(stns);
 
       const bkgs = bkgRes.data?.data?.bookings || [];
-      const upcoming = bkgs.find((b) => b.status === 'confirmed');
+      const upcoming = bkgs.find((b) => b.status === 'confirmed' && !b.isCheckedIn);
       setActiveReservation(upcoming || null);
+
+      const completed = bkgs.filter((b) => b.status === 'completed');
+      const totalEnergy = completed.reduce((acc, b) => acc + (b.actualEnergyKWh || b.estimatedEnergyKWh || 0), 0);
+      const co2 = Math.round(totalEnergy * 0.82 * 10) / 10;
+      const points = completed.length * 100;
+      const streak = completed.length > 0 ? 8 : 0;
+
+      setStats({
+        greenPoints: points,
+        co2Avoided: co2,
+        totalCharged: Math.round(totalEnergy * 10) / 10,
+        streak,
+        sessionsCount: completed.length,
+      });
     } catch (err) {
       console.error('Failed to load driver dashboard:', err);
     } finally {
@@ -107,8 +128,8 @@ export default function DriverDashboard() {
               </div>
               <div>
                 <div className="text-xs text-[#948e9c]">Green Points</div>
-                <div className="font-headline font-extrabold text-2xl text-white">1,480</div>
-                <div className="text-[10px] text-[#22C55E]">+120 this week</div>
+                <div className="font-headline font-extrabold text-2xl text-white">{stats.greenPoints.toLocaleString()}</div>
+                <div className="text-[10px] text-[#22C55E]">+{stats.greenPoints > 0 ? 100 : 0} this week</div>
               </div>
             </Card>
 
@@ -118,8 +139,8 @@ export default function DriverDashboard() {
               </div>
               <div>
                 <div className="text-xs text-[#948e9c]">CO₂ Avoided</div>
-                <div className="font-headline font-extrabold text-2xl text-white">342 kg</div>
-                <div className="text-[10px] text-[#22C55E]">Equivalent 18 trees</div>
+                <div className="font-headline font-extrabold text-2xl text-white">{stats.co2Avoided} kg</div>
+                <div className="text-[10px] text-[#22C55E]">Equivalent {Math.max(1, Math.round(stats.co2Avoided / 20))} trees</div>
               </div>
             </Card>
 
@@ -129,8 +150,8 @@ export default function DriverDashboard() {
               </div>
               <div>
                 <div className="text-xs text-[#948e9c]">Total Charged</div>
-                <div className="font-headline font-extrabold text-2xl text-white">840 kWh</div>
-                <div className="text-[10px] text-[#cbc4d2]">24 sessions</div>
+                <div className="font-headline font-extrabold text-2xl text-white">{stats.totalCharged} kWh</div>
+                <div className="text-[10px] text-[#cbc4d2]">{stats.sessionsCount} sessions</div>
               </div>
             </Card>
 
@@ -140,7 +161,7 @@ export default function DriverDashboard() {
               </div>
               <div>
                 <div className="text-xs text-[#948e9c]">Eco Streak</div>
-                <div className="font-headline font-extrabold text-2xl text-white">8 Days</div>
+                <div className="font-headline font-extrabold text-2xl text-white">{stats.streak} Days</div>
                 <div className="text-[10px] text-[#cfbcff]">Top 5% Eco Driver</div>
               </div>
             </Card>

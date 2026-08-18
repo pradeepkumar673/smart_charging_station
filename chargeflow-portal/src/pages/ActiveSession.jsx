@@ -52,7 +52,13 @@ export default function ActiveSession() {
     if (!activeSession) return;
     setEnding(true);
     try {
-      const response = await api.post(`/sessions/${activeSession._id}/end`);
+      const elapsedMins = Math.max(1, Math.round((Date.now() - new Date(activeSession.startTime).getTime()) / 60000));
+      const maxPower = activeSession.slot?.maxPowerKw || 60;
+      const energyDeliveredKWh = Math.round((maxPower * (elapsedMins / 60)) * 10) / 10 || 18.5;
+
+      const response = await api.post(`/sessions/${activeSession._id}/end`, {
+        energyDeliveredKWh,
+      });
       showToast({
         title: 'Session Finalized',
         message: 'Charging completed and bay released.',

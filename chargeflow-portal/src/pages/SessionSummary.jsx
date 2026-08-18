@@ -39,8 +39,8 @@ export default function SessionSummary() {
     loadSessionSummary();
   }, [id, showToast]);
 
-  const energyKWh = session?.energyDeliveredKWh || 24.2;
-  const cost = session?.cost || 350.9;
+  const energyKWh = session?.energyDeliveredKWh || 0;
+  const cost = session?.cost || 0;
   const co2AvoidedKg = Math.round(energyKWh * 0.82 * 10) / 10;
 
   return (

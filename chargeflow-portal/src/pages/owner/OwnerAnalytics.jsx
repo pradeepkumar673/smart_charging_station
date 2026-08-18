@@ -82,32 +82,32 @@ export default function OwnerAnalytics() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <KPIStatCard
                 title="Period Revenue"
-                value={`₹${kpiData?.totalRevenue || 184200}`}
-                change="+18.4%"
+                value={`₹${kpiData?.totalRevenue ?? 0}`}
+                change="Revenue"
                 isPositive={true}
                 icon={DollarSign}
                 color="#22C55E"
               />
               <KPIStatCard
                 title="Total Sessions"
-                value={`${kpiData?.totalSessions || 1240} Sessions`}
-                change="+110"
+                value={`${kpiData?.totalSessions ?? 0} Sessions`}
+                change="Sessions"
                 isPositive={true}
                 icon={Activity}
                 color="#36D8FF"
               />
               <KPIStatCard
                 title="Energy Delivered"
-                value={`${kpiData?.totalEnergyDeliveredKWh || 18400} kWh`}
-                change="+2.4 MWh"
+                value={`${kpiData?.totalEnergyDelivered ?? 0} kWh`}
+                change="Energy"
                 isPositive={true}
                 icon={Cpu}
                 color="#e7c365"
               />
               <KPIStatCard
                 title="No-Show Rate"
-                value={`${kpiData?.noShowRate || 2.1}%`}
-                change="-0.8%"
+                value={`${kpiData?.noShowRate ?? 0}%`}
+                change="Recovery"
                 isPositive={true}
                 icon={ShieldCheck}
                 color="#22C55E"

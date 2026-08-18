@@ -2,8 +2,10 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Logo from '../ui/Logo';
 import { LayoutDashboard, MapPin, CalendarCheck, Leaf, Bell, Settings, LogOut, Car, BatteryCharging, Zap, ShieldCheck } from 'lucide-react';
+import useAuth from '../../hooks/useAuth';
 
 export default function DriverSidebar({ mobileOpen, setMobileOpen }) {
+  const { user, logout } = useAuth();
   const location = useLocation();
   const currentPath = location.pathname;
 
@@ -16,6 +18,11 @@ export default function DriverSidebar({ mobileOpen, setMobileOpen }) {
     { label: 'Notifications', path: '/driver/notifications', icon: Bell, unread: true },
     { label: 'Profile & Settings', path: '/driver/profile', icon: Settings },
   ];
+
+  const vehicleName = user?.vehicle?.model
+    ? `${user.vehicle.brand || user.vehicle.make || ''} ${user.vehicle.model}`
+    : 'Tata Nexon EV';
+  const rangeKm = Math.round((user?.vehicle?.batteryCapacityKWh || 40.5) * 6 * 0.64);
 
   return (
     <>
@@ -81,7 +88,7 @@ export default function DriverSidebar({ mobileOpen, setMobileOpen }) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Car className="w-4 h-4 text-[#cfbcff]" />
-                <span className="text-xs font-bold text-white">Tata Nexon EV</span>
+                <span className="text-xs font-bold text-white max-w-[120px] truncate">{vehicleName}</span>
               </div>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#22C55E]/15 text-[#22C55E]">
                 Connected
@@ -91,20 +98,23 @@ export default function DriverSidebar({ mobileOpen, setMobileOpen }) {
               <span className="flex items-center gap-1">
                 <BatteryCharging className="w-3.5 h-3.5 text-[#22C55E]" /> 64% SoC
               </span>
-              <span>260 km Range</span>
+              <span>{rangeKm} km Range</span>
             </div>
             <div className="w-full h-1.5 bg-[#1d1b20] rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-[#2D8CFF] to-[#22C55E] rounded-full" style={{ width: '64%' }} />
             </div>
           </div>
 
-          <Link
-            to="/"
-            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-[#ffb4ab] hover:bg-[#93000a]/20 transition-colors w-full"
+          <button
+            onClick={() => {
+              logout();
+              window.location.href = '/driver/login';
+            }}
+            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-[#ffb4ab] hover:bg-[#93000a]/20 transition-colors w-full text-left"
           >
             <LogOut className="w-4 h-4" />
             <span>Sign Out</span>
-          </Link>
+          </button>
         </div>
       </aside>
     </>
