@@ -102,7 +102,9 @@ export default function FeedbackCenter() {
                 <Star className="w-10 h-10 fill-current" />
               </div>
               <div>
-                <div className="font-headline font-extrabold text-4xl text-white">4.9 / 5.0</div>
+                <div className="font-headline font-extrabold text-4xl text-white">
+                  {catAverages?.overall ?? 5.0} / 5.0
+                </div>
                 <div className="text-xs text-[#cbc4d2]">Based on verified driver reviews this month</div>
               </div>
             </div>
@@ -110,19 +112,19 @@ export default function FeedbackCenter() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
               <div className="bg-[#141218]/80 p-2.5 rounded-xl border border-[#494551]/40">
                 <span className="text-[#948e9c] block text-[10px]">Cleanliness</span>
-                <span className="font-bold text-[#22C55E]">{catAverages?.cleanliness || 4.9} ★</span>
+                <span className="font-bold text-[#22C55E]">{catAverages?.cleanliness ?? 5.0} ★</span>
               </div>
               <div className="bg-[#141218]/80 p-2.5 rounded-xl border border-[#494551]/40">
                 <span className="text-[#948e9c] block text-[10px]">Access</span>
-                <span className="font-bold text-[#22C55E]">{catAverages?.easeOfAccess || 4.8} ★</span>
+                <span className="font-bold text-[#22C55E]">{catAverages?.easeOfAccess ?? 5.0} ★</span>
               </div>
               <div className="bg-[#141218]/80 p-2.5 rounded-xl border border-[#494551]/40">
                 <span className="text-[#948e9c] block text-[10px]">Cable Quality</span>
-                <span className="font-bold text-[#e7c365]">{catAverages?.cableCondition || 4.7} ★</span>
+                <span className="font-bold text-[#e7c365]">{catAverages?.cableCondition ?? 5.0} ★</span>
               </div>
               <div className="bg-[#141218]/80 p-2.5 rounded-xl border border-[#494551]/40">
                 <span className="text-[#948e9c] block text-[10px]">Safety</span>
-                <span className="font-bold text-[#22C55E]">{catAverages?.lighting || 4.9} ★</span>
+                <span className="font-bold text-[#22C55E]">{catAverages?.lighting ?? 5.0} ★</span>
               </div>
             </div>
           </Card>
@@ -153,7 +155,7 @@ export default function FeedbackCenter() {
                       <span className="text-xs font-bold text-[#e7c365]">★ {r.ratings?.overall || 5}.0</span>
                     </div>
 
-                    <p className="text-xs text-[#cbc4d2] leading-relaxed">"{r.comment || 'Outstanding charging speed and clean facilities!'}"</p>
+                    <p className="text-xs text-[#cbc4d2] leading-relaxed">"{r.comment || ''}"</p>
 
                     <div className="flex items-center justify-between pt-2 border-t border-[#494551]/40 text-xs text-[#948e9c]">
                       <span>{new Date(r.createdAt).toLocaleDateString()}</span>

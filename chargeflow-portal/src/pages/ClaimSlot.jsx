@@ -111,7 +111,7 @@ export default function ClaimSlot() {
               {/* Countdown Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#e7c365]/15 border border-[#e7c365]/30 text-[#e7c365] text-xs font-extrabold">
                 <Clock className="w-4 h-4 animate-spin-slow" />
-                <span>Claim Window: {primaryClaimable.claimWindowMinutesRemaining || 15} mins remaining</span>
+                <span>Claim Window: {primaryClaimable.claimWindowMinutesRemaining || 0} mins remaining</span>
               </div>
 
               <div className="space-y-1 text-left pt-2">
@@ -133,10 +133,10 @@ export default function ClaimSlot() {
                 <MapPanel />
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-2 border-t border-[#494551]/40">
-                <span className="text-[#cbc4d2]">Rate</span>
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-[#494551]/40 text-[#cbc4d2]">
+                <span>Rate</span>
                 <span className="font-bold text-[#22C55E]">
-                  ₹{primaryClaimable.station?.basePricePerKWh || 14}/kWh (+100 Green Points)
+                  ₹{primaryClaimable.station?.basePricePerKWh || 0}/kWh (+100 Green Points)
                 </span>
               </div>
 
@@ -174,7 +174,7 @@ export default function ClaimSlot() {
                 <Button
                   variant="brand"
                   fullWidth
-                  onClick={() => navigate(`/driver/navigation/${claimedBooking?._id || 'bkg-claim-99'}`)}
+                  onClick={() => navigate(`/driver/navigation/${claimedBooking?._id || ''}`)}
                 >
                   Start Route Navigation
                 </Button>

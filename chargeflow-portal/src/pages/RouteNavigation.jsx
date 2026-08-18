@@ -92,7 +92,7 @@ export default function RouteNavigation() {
                 <div>
                   <div className="font-bold text-white">Route to Bay {booking?.slot?.slotId || 'A1'}</div>
                   <div className="text-[10px] text-[#948e9c]">
-                    {booking?.station?.name || 'MG Road Hub'} • ID #{bookingId ? bookingId.slice(-6) : '8821'}
+                    {booking?.station?.name || ''} • ID #{bookingId ? bookingId.slice(-6) : ''}
                   </div>
                 </div>
               </div>

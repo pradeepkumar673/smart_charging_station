@@ -32,10 +32,10 @@ export default function GreenInsights() {
 
       // CO2 avoided: ~0.82 kg per kWh grid offset ratio
       const co2 = Math.round(totalEnergy * 0.82 * 10) / 10;
-      setTotalCo2Avoided(co2 || 19.8);
+      setTotalCo2Avoided(co2 || 0);
 
       // 100 green points per completed session
-      setGreenPoints(completed.length * 100 || 100);
+      setGreenPoints(completed.length * 100);
     } catch (err) {
       console.error('Failed to load green insights:', err);
       showToast({ title: 'Error', message: 'Could not load green impact telemetry.', type: 'error' });

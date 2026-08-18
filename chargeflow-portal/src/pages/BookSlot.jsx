@@ -371,7 +371,7 @@ export default function BookSlot() {
                   variant="brand"
                   fullWidth
                   size="lg"
-                  onClick={() => navigate(`/driver/navigation/${createdBooking?._id || 'bkg-8821'}`)}
+                  onClick={() => navigate(`/driver/navigation/${createdBooking?._id || ''}`)}
                 >
                   Start Route Navigation
                 </Button>

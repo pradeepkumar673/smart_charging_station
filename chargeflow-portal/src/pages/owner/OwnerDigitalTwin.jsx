@@ -43,6 +43,31 @@ export default function OwnerDigitalTwin() {
 
   const selectedStation = stations.find((s) => s._id === selectedStationId) || stations[0];
 
+  const handleToggleMaintenance = async (slotId) => {
+    if (!slotId) return;
+    const currentStatus = selectedBay?.status || (selectedBay?.raw && selectedBay.raw.status) || 'available';
+    const newStatus = currentStatus === 'maintenance' ? 'available' : 'maintenance';
+    try {
+      const response = await api.patch(`/slots/${slotId}`, { status: newStatus });
+      const updatedSlot = response.data?.data?.slot;
+      showToast({
+        title: 'Status Updated',
+        message: `Dispenser bay status set to ${newStatus}.`,
+        type: 'success',
+      });
+      if (updatedSlot) {
+        setSelectedBay({
+          ...selectedBay,
+          status: updatedSlot.status,
+          raw: updatedSlot,
+        });
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Could not update slot status.';
+      showToast({ title: 'Update Error', message: errMsg, type: 'error' });
+    }
+  };
+
   const timeline = [
     { time: 'Just now', text: 'Live telemetry stream active over WebSocket', type: 'info' },
     { time: '2 mins ago', text: 'Slot status sync verified with MongoDB', type: 'info' },
@@ -130,7 +155,11 @@ export default function OwnerDigitalTwin() {
 
               {/* Right Column: Inspector Panel */}
               <div>
-                <TwinInspector bay={selectedBay} onClose={() => setSelectedBay(null)} />
+                <TwinInspector
+                  bay={selectedBay}
+                  onClose={() => setSelectedBay(null)}
+                  onToggleMaintenance={handleToggleMaintenance}
+                />
               </div>
             </div>
           )}

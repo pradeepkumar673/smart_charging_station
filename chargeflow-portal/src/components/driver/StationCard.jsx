@@ -22,9 +22,9 @@ export default function StationCard({ station, onSelect }) {
   } = station || {};
 
   const stationId = _id || id;
-  const freeSlots = availableSlotsCount !== undefined ? availableSlotsCount : 4;
-  const totalBays = totalSlots || 6;
-  const renewablePct = renewableSharePct || (renewableMix?.solarPct || 0) + (renewableMix?.windPct || 0) || 75;
+  const freeSlots = availableSlotsCount !== undefined ? availableSlotsCount : 0;
+  const totalBays = totalSlots || 0;
+  const renewablePct = renewableSharePct || (renewableMix?.solarPct || 0) + (renewableMix?.windPct || 0) || 0;
   const priceDisplay = `₹${basePricePerKWh}/kWh`;
   const primaryPower = chargerTypes.includes('Rapid') ? '150 kW DC Rapid' : chargerTypes.includes('DC') ? '60 kW DC Fast' : '22 kW AC';
 
