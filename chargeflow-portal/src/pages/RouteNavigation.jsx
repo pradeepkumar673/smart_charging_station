@@ -3,8 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import DriverSidebar from '../components/layout/DriverSidebar';
 import DriverHeader from '../components/layout/DriverHeader';
 import MapPanel from '../components/driver/MapPanel';
-import Card from '../ui/Card';
-import Button from '../ui/Button';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 import { ArrowLeft, Navigation, MapPin, Clock, BatteryCharging, ShieldCheck, Compass, ExternalLink, CornerUpRight, MoveRight } from 'lucide-react';
 
 export default function RouteNavigation() {

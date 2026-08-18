@@ -4,9 +4,9 @@ import DriverSidebar from '../components/layout/DriverSidebar';
 import DriverHeader from '../components/layout/DriverHeader';
 import Footer from '../components/layout/Footer';
 import StationTwin from '../components/driver/StationTwin';
-import EnergyBadge from '../ui/EnergyBadge';
-import Card from '../ui/Card';
-import Button from '../ui/Button';
+import EnergyBadge from '../components/ui/EnergyBadge';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 import { ArrowLeft, Star, MapPin, Navigation, ArrowRight, ShieldCheck, Zap, Coffee, Wifi, Sparkles, Heart, Share2, ThumbsUp } from 'lucide-react';
 
 export default function StationDetails() {

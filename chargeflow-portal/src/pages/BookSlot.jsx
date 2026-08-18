@@ -3,10 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import DriverSidebar from '../components/layout/DriverSidebar';
 import DriverHeader from '../components/layout/DriverHeader';
 import Footer from '../components/layout/Footer';
-import Stepper from '../ui/Stepper';
-import Card from '../ui/Card';
-import Button from '../ui/Button';
-import EnergyBadge from '../ui/EnergyBadge';
+import Stepper from '../components/ui/Stepper';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import EnergyBadge from '../components/ui/EnergyBadge';
 import { ArrowLeft, ArrowRight, Zap, Clock, Calendar, ShieldCheck, CheckCircle2, QrCode, CreditCard, Sparkles } from 'lucide-react';
 
 export default function BookSlot() {
