@@ -18,6 +18,7 @@ const initSocket = require("./sockets");
 const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
 const stationRoutes = require("./routes/station.routes");
+const slotRoutes = require("./routes/slot.routes");
 const bookingRoutes = require("./routes/booking.routes");
 
 const app = express();
@@ -54,9 +55,14 @@ app.get(["/", "/api/v1/health"], (req, res) => {
 
 // --- Routes ---
 app.use("/api/v1/auth", authRoutes);
-app.use("/api/auth", authRoutes); // alias for backwards compatibility
-app.use("/api/users", userRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/v1/stations", stationRoutes);
 app.use("/api/stations", stationRoutes);
+app.use("/api/v1/slots", slotRoutes);
+app.use("/api/slots", slotRoutes);
+app.use("/api/v1/users", userRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/v1/bookings", bookingRoutes);
 app.use("/api/bookings", bookingRoutes);
 
 // --- Socket.io ---
