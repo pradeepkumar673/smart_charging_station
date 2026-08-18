@@ -72,6 +72,19 @@ exports.createBooking = catchAsync(async (req, res, next) => {
   slot.currentBooking = booking._id;
   await slot.save();
 
+  // Socket.io real-time telemetry emissions
+  req.app.get("io")?.emit("booking:created", {
+    bookingId: booking._id,
+    stationId,
+    slotId,
+    startTime: booking.startTime,
+  });
+  req.app.get("io")?.emit("slot:status_changed", {
+    slotId: slot._id,
+    stationId,
+    status: "reserved",
+  });
+
   const populatedBooking = await Booking.findById(booking._id)
     .populate("station", "name address city location basePricePerKWh")
     .populate("slot", "slotId chargerType connectorType maxPowerKw status");
@@ -85,10 +98,14 @@ exports.createBooking = catchAsync(async (req, res, next) => {
 
 /**
  * GET /api/v1/bookings/my
- * Driver: Fetch my bookings list with status filtering
+ * Driver: Fetch my bookings list with status filtering & pagination
  */
 exports.getMyBookings = catchAsync(async (req, res, next) => {
-  const { status } = req.query;
+  const { status, page = 1, limit = 15 } = req.query;
+
+  const pageNum = parseInt(page, 10) || 1;
+  const limitNum = parseInt(limit, 10) || 15;
+  const skip = (pageNum - 1) * limitNum;
 
   const filter = { user: req.user._id };
 
@@ -100,15 +117,24 @@ exports.getMyBookings = catchAsync(async (req, res, next) => {
     }
   }
 
+  const total = await Booking.countDocuments(filter);
   const bookings = await Booking.find(filter)
     .sort({ startTime: -1 })
+    .skip(skip)
+    .limit(limitNum)
     .populate("station", "name address city location basePricePerKWh operatingHours")
     .populate("slot", "slotId chargerType connectorType maxPowerKw status")
     .lean();
 
   sendResponse(res, {
     message: "My bookings retrieved successfully",
-    data: { count: bookings.length, bookings },
+    data: {
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / limitNum) || 1,
+      count: bookings.length,
+      bookings,
+    },
   });
 });
 
@@ -141,6 +167,12 @@ exports.cancelBooking = catchAsync(async (req, res, next) => {
     slot.status = "available";
     slot.currentBooking = null;
     await slot.save();
+
+    req.app.get("io")?.emit("slot:status_changed", {
+      slotId: slot._id,
+      stationId: slot.station,
+      status: "available",
+    });
   }
 
   sendResponse(res, {

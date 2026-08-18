@@ -76,9 +76,8 @@ const bookingSchema = new mongoose.Schema(
 );
 
 // --- Indexes ---
-bookingSchema.index({ user: 1 });
-bookingSchema.index({ station: 1 });
-bookingSchema.index({ status: 1 });
-bookingSchema.index({ startTime: 1 });
+bookingSchema.index({ user: 1, status: 1 });
+bookingSchema.index({ station: 1, status: 1 });
+bookingSchema.index({ slot: 1, status: 1, startTime: 1, endTime: 1 });
 
 module.exports = mongoose.model("Booking", bookingSchema);

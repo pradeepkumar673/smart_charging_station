@@ -97,7 +97,8 @@ const stationSchema = new mongoose.Schema(
 
 // --- Indexes ---
 stationSchema.index({ location: "2dsphere" });
-stationSchema.index({ owner: 1 });
-stationSchema.index({ isOperational: 1 });
+stationSchema.index({ owner: 1, isOperational: 1 });
+stationSchema.index({ city: 1, isOperational: 1 });
+stationSchema.index({ name: "text" });
 
 module.exports = mongoose.model("Station", stationSchema);

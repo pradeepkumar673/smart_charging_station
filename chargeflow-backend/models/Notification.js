@@ -35,7 +35,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["booking", "charging", "savings", "station", "system"],
+      enum: ["booking", "charging", "savings", "station", "session", "slot", "system"],
       required: true,
     },
     isRead: {
@@ -51,8 +51,7 @@ const notificationSchema = new mongoose.Schema(
 );
 
 // --- Indexes ---
-notificationSchema.index({ user: 1 });
-notificationSchema.index({ isRead: 1 });
+notificationSchema.index({ user: 1, isRead: 1 });
 notificationSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("Notification", notificationSchema);

@@ -68,6 +68,12 @@ const userSchema = new mongoose.Schema(
       type: companySchema,
       default: undefined, // only relevant for role: owner
     },
+    favorites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Station",
+      },
+    ],
     isVerified: {
       type: Boolean,
       default: false,
@@ -142,7 +148,6 @@ userSchema.methods.toSafeObject = function toSafeObject() {
 };
 
 // --- Static methods ---
-// Explicit helper for auth flows that need the password field included.
 userSchema.statics.findByEmailWithPassword = function findByEmailWithPassword(email) {
   return this.findOne({ email }).select("+password");
 };

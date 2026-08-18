@@ -32,7 +32,7 @@ const slotSchema = new mongoose.Schema(
     },
     connectorType: {
       type: String,
-      enum: ["CCS2", "Type2", "CHAdeMO", "GBT"],
+      enum: ["CCS2", "Type2", "CHAdeMO", "GBT", "NACS", "Other"],
       required: true,
     },
     maxPowerKw: {
@@ -60,6 +60,6 @@ const slotSchema = new mongoose.Schema(
 
 // --- Indexes ---
 slotSchema.index({ station: 1, slotId: 1 }, { unique: true });
-slotSchema.index({ status: 1 });
+slotSchema.index({ station: 1, status: 1 });
 
 module.exports = mongoose.model("Slot", slotSchema);

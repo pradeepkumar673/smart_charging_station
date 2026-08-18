@@ -63,6 +63,14 @@ exports.updateSlotStatus = catchAsync(async (req, res, next) => {
 
   await slot.save();
 
+  // Socket.io real-time telemetry emission
+  req.app.get("io")?.emit("slot:status_changed", {
+    slotId: slot._id,
+    stationId: slot.station._id,
+    status,
+    maintenanceInfo: slot.maintenanceInfo,
+  });
+
   sendResponse(res, {
     message: "Slot status updated successfully",
     data: { slot },

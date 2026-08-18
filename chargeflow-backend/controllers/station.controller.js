@@ -1,15 +1,17 @@
 const Station = require("../models/Station");
 const Slot = require("../models/Slot");
+const User = require("../models/User");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/AppError");
 const { sendResponse } = require("../utils/apiResponse");
 
 /**
  * GET /api/v1/stations
- * Driver: List & filter stations with optional 2dsphere geo-nearby search
+ * Driver: List, search (by name/city), & filter stations with optional 2dsphere geo-nearby search & pagination
  */
 exports.getAllStations = catchAsync(async (req, res, next) => {
   const {
+    name,
     city,
     minPrice,
     maxPrice,
@@ -19,9 +21,18 @@ exports.getAllStations = catchAsync(async (req, res, next) => {
     lat,
     lng,
     radius,
+    page = 1,
+    limit = 20,
   } = req.query;
 
+  const pageNum = parseInt(page, 10) || 1;
+  const limitNum = parseInt(limit, 10) || 20;
+
   const filter = { isOperational: true };
+
+  if (name) {
+    filter.name = { $regex: new RegExp(name, "i") };
+  }
 
   if (city) {
     filter.city = { $regex: new RegExp(city, "i") };
@@ -101,9 +112,19 @@ exports.getAllStations = catchAsync(async (req, res, next) => {
     stations = stations.filter((s) => s.availableSlotsCount > 0);
   }
 
+  const totalCount = stations.length;
+  const startIndex = (pageNum - 1) * limitNum;
+  const paginatedStations = stations.slice(startIndex, startIndex + limitNum);
+
   sendResponse(res, {
     message: "Stations retrieved successfully",
-    data: { count: stations.length, stations },
+    data: {
+      total: totalCount,
+      page: pageNum,
+      pages: Math.ceil(totalCount / limitNum) || 1,
+      count: paginatedStations.length,
+      stations: paginatedStations,
+    },
   });
 });
 
@@ -347,5 +368,89 @@ exports.updateStation = catchAsync(async (req, res, next) => {
   sendResponse(res, {
     message: "Station updated successfully",
     data: { station },
+  });
+});
+
+/**
+ * PATCH /api/v1/stations/:id/pricing
+ * Owner: Update station tariff pricing per kWh
+ */
+exports.updatePricing = catchAsync(async (req, res, next) => {
+  const { basePricePerKWh } = req.body;
+
+  if (basePricePerKWh === undefined || Number(basePricePerKWh) < 0) {
+    return next(new AppError("Please provide a valid non-negative basePricePerKWh", 400));
+  }
+
+  const station = await Station.findById(req.params.id);
+  if (!station) {
+    return next(new AppError("Station not found", 404));
+  }
+
+  if (station.owner.toString() !== req.user._id.toString()) {
+    return next(new AppError("You are not authorized to update pricing for this station", 403));
+  }
+
+  station.basePricePerKWh = Number(basePricePerKWh);
+  await station.save();
+
+  sendResponse(res, {
+    message: "Station base price updated successfully",
+    data: { station },
+  });
+});
+
+/**
+ * POST /api/v1/stations/:id/favorite
+ * Driver: Add station to driver favorites list
+ */
+exports.addFavorite = catchAsync(async (req, res, next) => {
+  const station = await Station.findById(req.params.id);
+  if (!station) {
+    return next(new AppError("Station not found", 404));
+  }
+
+  const user = await User.findById(req.user._id);
+  if (!user.favorites.includes(station._id)) {
+    user.favorites.push(station._id);
+    await user.save();
+  }
+
+  sendResponse(res, {
+    message: "Station added to favorites successfully",
+    data: { favoritesCount: user.favorites.length },
+  });
+});
+
+/**
+ * DELETE /api/v1/stations/:id/favorite
+ * Driver: Remove station from driver favorites list
+ */
+exports.removeFavorite = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+  user.favorites = user.favorites.filter((favId) => favId.toString() !== req.params.id);
+  await user.save();
+
+  sendResponse(res, {
+    message: "Station removed from favorites successfully",
+    data: { favoritesCount: user.favorites.length },
+  });
+});
+
+/**
+ * GET /api/v1/stations/favorites
+ * Driver: Get driver's favorite stations list
+ */
+exports.getFavorites = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.user._id)
+    .populate({
+      path: "favorites",
+      select: "name address city location basePricePerKWh operatingHours renewableMix isOperational",
+    })
+    .lean();
+
+  sendResponse(res, {
+    message: "Favorite stations retrieved successfully",
+    data: { count: user.favorites.length, favorites: user.favorites },
   });
 });

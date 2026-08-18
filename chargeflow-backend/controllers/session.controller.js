@@ -58,6 +58,19 @@ exports.checkIn = catchAsync(async (req, res, next) => {
     await slot.save();
   }
 
+  // Socket.io real-time telemetry emissions
+  req.app.get("io")?.emit("session:started", {
+    sessionId: session._id,
+    bookingId: booking._id,
+    stationId: booking.station,
+    slotId: booking.slot,
+  });
+  req.app.get("io")?.emit("slot:status_changed", {
+    slotId: booking.slot,
+    stationId: booking.station,
+    status: "occupied",
+  });
+
   const populatedSession = await Session.findById(session._id)
     .populate("station", "name address location basePricePerKWh")
     .populate("slot", "slotId chargerType connectorType maxPowerKw")
@@ -127,6 +140,23 @@ exports.endSession = catchAsync(async (req, res, next) => {
       slot.currentBooking = null;
       await slot.save();
     }
+  }
+
+  // Socket.io real-time telemetry emissions
+  req.app.get("io")?.emit("session:ended", {
+    sessionId: session._id,
+    bookingId: session.booking?._id,
+    stationId: session.station._id,
+    slotId: session.slot?._id,
+    energyDeliveredKWh: energyKWh,
+    cost,
+  });
+  if (session.slot) {
+    req.app.get("io")?.emit("slot:status_changed", {
+      slotId: session.slot._id,
+      stationId: session.station._id,
+      status: "available",
+    });
   }
 
   sendResponse(res, {

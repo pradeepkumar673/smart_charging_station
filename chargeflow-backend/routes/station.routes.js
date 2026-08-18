@@ -11,7 +11,7 @@ const {
 
 const router = express.Router();
 
-// --- Public / Driver Routes ---
+// --- Public / Driver Search Routes ---
 router.get(
   "/",
   queryStationsValidator,
@@ -19,17 +19,17 @@ router.get(
   stationController.getAllStations
 );
 
-// Protected owner route: GET /my must come before /:id parameter route
-router.get(
-  "/my",
-  protect,
-  restrictTo("owner"),
-  stationController.getMyStations
-);
+// Protected routes (must come before /:id)
+router.get("/my", protect, restrictTo("owner"), stationController.getMyStations);
+router.get("/favorites", protect, restrictTo("driver"), stationController.getFavorites);
 
 router.get("/:id", stationController.getStationById);
 router.get("/:id/twin", stationController.getStationTwin);
 router.get("/:id/slots", slotController.getStationSlots);
+
+// --- Driver Favorites Routes ---
+router.post("/:id/favorite", protect, restrictTo("driver"), stationController.addFavorite);
+router.delete("/:id/favorite", protect, restrictTo("driver"), stationController.removeFavorite);
 
 // --- Owner Only Routes ---
 router.post(
@@ -48,6 +48,13 @@ router.patch(
   updateStationValidator,
   validateRequest,
   stationController.updateStation
+);
+
+router.patch(
+  "/:id/pricing",
+  protect,
+  restrictTo("owner"),
+  stationController.updatePricing
 );
 
 module.exports = router;

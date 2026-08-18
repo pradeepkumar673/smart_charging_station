@@ -66,8 +66,7 @@ const sessionSchema = new mongoose.Schema(
 );
 
 // --- Indexes ---
-sessionSchema.index({ user: 1 });
-sessionSchema.index({ status: 1 });
-
+sessionSchema.index({ user: 1, status: 1 });
+sessionSchema.index({ station: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Session", sessionSchema);

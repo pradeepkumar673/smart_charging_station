@@ -223,6 +223,18 @@ exports.claimNoShowSlot = catchAsync(async (req, res, next) => {
   slot.currentBooking = newBooking._id;
   await slot.save();
 
+  // Socket.io real-time telemetry emissions
+  req.app.get("io")?.emit("noshow:claimed", {
+    slotId,
+    newBookingId: newBooking._id,
+    stationId: slot.station._id,
+  });
+  req.app.get("io")?.emit("slot:status_changed", {
+    slotId,
+    stationId: slot.station._id,
+    status: "reserved",
+  });
+
   const populatedBooking = await Booking.findById(newBooking._id)
     .populate("station", "name address location basePricePerKWh")
     .populate("slot", "slotId chargerType connectorType maxPowerKw");
