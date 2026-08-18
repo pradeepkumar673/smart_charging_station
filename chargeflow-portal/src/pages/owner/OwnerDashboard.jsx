@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import OwnerSidebar from '../../components/layout/OwnerSidebar';
 import OwnerHeader from '../../components/layout/OwnerHeader';
@@ -7,10 +7,23 @@ import KPIStatCard from '../../components/owner/KPIStatCard';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import StationTwin from '../../components/driver/StationTwin';
+import StatCardSkeleton from '../../components/ui/StatCardSkeleton';
+import TwinSkeleton from '../../components/ui/TwinSkeleton';
+import { getOwnerStations, getOwnerAnalytics } from '../../data/mockOwnerData';
 import { DollarSign, Activity, Cpu, Zap, AlertTriangle, ArrowRight, ShieldCheck, Sparkles, Plus, TrendingUp } from 'lucide-react';
 
 export default function OwnerDashboard() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [ownerStations, setOwnerStations] = useState([]);
+
+  useEffect(() => {
+    getOwnerStations().then((data) => {
+      setOwnerStations(data);
+      setLoading(false);
+    });
+  }, []);
+
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex">
@@ -43,68 +56,79 @@ export default function OwnerDashboard() {
 
           {/* Top KPI Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <KPIStatCard
-              title="Today's Revenue"
-              value="₹18,420"
-              change="+14.2%"
-              isPositive={true}
-              icon={DollarSign}
-              color="#22C55E"
-            />
-            <KPIStatCard
-              title="Utilization"
-              value="82%"
-              change="+6.8%"
-              isPositive={true}
-              icon={Activity}
-              color="#36D8FF"
-            />
-            <KPIStatCard
-              title="Active Sessions"
-              value="6 Bays"
-              change="2 Waiting"
-              isPositive={true}
-              icon={Zap}
-              color="#6750a4"
-            />
-            <KPIStatCard
-              title="Energy Delivered"
-              value="1.2 MWh"
-              change="+180 kWh"
-              isPositive={true}
-              icon={Cpu}
-              color="#e7c365"
-            />
-            <KPIStatCard
-              title="No-Show Rate"
-              value="2.1%"
-              change="-0.9%"
-              isPositive={true}
-              subtitle="Improved"
-              icon={ShieldCheck}
-              color="#22C55E"
-            />
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => <StatCardSkeleton key={i} />)
+            ) : (
+              <>
+                <KPIStatCard
+                  title="Today's Revenue"
+                  value="₹18,420"
+                  change="+14.2%"
+                  isPositive={true}
+                  icon={DollarSign}
+                  color="#22C55E"
+                />
+                <KPIStatCard
+                  title="Utilization"
+                  value="82%"
+                  change="+6.8%"
+                  isPositive={true}
+                  icon={Activity}
+                  color="#36D8FF"
+                />
+                <KPIStatCard
+                  title="Active Sessions"
+                  value="6 Bays"
+                  change="2 Waiting"
+                  isPositive={true}
+                  icon={Zap}
+                  color="#6750a4"
+                />
+                <KPIStatCard
+                  title="Energy Delivered"
+                  value="1.2 MWh"
+                  change="+180 kWh"
+                  isPositive={true}
+                  icon={Cpu}
+                  color="#e7c365"
+                />
+                <KPIStatCard
+                  title="No-Show Rate"
+                  value="2.1%"
+                  change="-0.9%"
+                  isPositive={true}
+                  subtitle="Improved"
+                  icon={ShieldCheck}
+                  color="#22C55E"
+                />
+              </>
+            )}
           </div>
 
           {/* Main Grid: Living Twin & Station Health */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
-              <Card glow className="space-y-4">
-                <div className="flex items-center justify-between border-b border-[#494551]/40 pb-3">
-                  <div>
-                    <h3 className="font-headline font-bold text-lg text-white">VoltHub Indiranagar (Live Grid)</h3>
-                    <p className="text-xs text-[#948e9c]">8 Bays • 150kW CCS2 & 350kW NACS • 82% Occupied</p>
+              {loading ? (
+                <TwinSkeleton />
+              ) : (
+                <Card glow className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#494551]/40 pb-3">
+                    <div>
+                      <h3 className="font-headline font-bold text-lg text-white">VoltHub Indiranagar (Live Grid)</h3>
+                      <p className="text-xs text-[#948e9c]">8 Bays • 150kW CCS2 & 350kW NACS • 82% Occupied</p>
+                    </div>
+                    <Link to="/owner/twin">
+                      <Button variant="brand" size="sm" icon={ArrowRight} iconPosition="right">
+                        Full Digital Twin
+                      </Button>
+                    </Link>
                   </div>
-                  <Link to="/owner/twin">
-                    <Button variant="brand" size="sm" icon={ArrowRight} iconPosition="right">
-                      Full Digital Twin
-                    </Button>
-                  </Link>
-                </div>
 
-                <StationTwin />
-              </Card>
+                  <StationTwin />
+                </Card>
+              )}
             </div>
+
 
             {/* Right Column: Operational Health & Load Balancing */}
             <div className="space-y-6">

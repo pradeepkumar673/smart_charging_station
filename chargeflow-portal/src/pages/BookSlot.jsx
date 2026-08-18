@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useToast } from '../hooks/useToast';
 import DriverSidebar from '../components/layout/DriverSidebar';
 import DriverHeader from '../components/layout/DriverHeader';
 import Footer from '../components/layout/Footer';
@@ -12,6 +13,7 @@ import { ArrowLeft, ArrowRight, Zap, Clock, Calendar, ShieldCheck, CheckCircle2,
 export default function BookSlot() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [confirmedModal, setConfirmedModal] = useState(false);
@@ -38,8 +40,10 @@ export default function BookSlot() {
       setCurrentStep(currentStep + 1);
     } else {
       setConfirmedModal(true);
+      toast.success("Slot booked! Confirmation sent to your dashboard.");
     }
   };
+
 
   const handleBack = () => {
     if (currentStep > 1) {

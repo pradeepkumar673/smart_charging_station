@@ -4,7 +4,8 @@ import OwnerHeader from '../../components/layout/OwnerHeader';
 import Footer from '../../components/layout/Footer';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import { MessageSquare, Star, ThumbsUp, Wrench, Sparkles, MessageCircle } from 'lucide-react';
+import EmptyState from '../../components/states/EmptyState';
+import { MessageSquare, Star, ThumbsUp, Wrench, Sparkles, MessageCircle, MessageSquareOff } from 'lucide-react';
 
 export default function FeedbackCenter() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -65,7 +66,15 @@ export default function FeedbackCenter() {
           <div className="space-y-4">
             <h3 className="font-headline font-bold text-xl text-white">Recent Driver Reviews</h3>
 
-            <div className="space-y-4">
+            {reviews.length === 0 ? (
+              <EmptyState
+                icon={MessageSquareOff}
+                title="No feedback yet"
+                description="Once drivers rate their charging sessions here, their reviews will show up in this panel."
+              />
+            ) : (
+              <div className="space-y-4">
+
               {reviews.map((r, i) => (
                 <Card key={i} className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -94,8 +103,10 @@ export default function FeedbackCenter() {
                 </Card>
               ))}
             </div>
+            )}
           </div>
         </main>
+
 
         <Footer />
       </div>

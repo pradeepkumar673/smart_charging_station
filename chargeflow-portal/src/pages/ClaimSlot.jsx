@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useToast } from '../hooks/useToast';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Card from '../components/ui/Card';
@@ -9,7 +10,14 @@ import { Zap, Clock, MapPin, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle 
 
 export default function ClaimSlot() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [claimedModal, setClaimedModal] = useState(false);
+
+  const handleClaim = () => {
+    setClaimedModal(true);
+    toast.success("Slot claimed successfully. Head to the station now!");
+  };
+
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex flex-col justify-between">
@@ -64,10 +72,11 @@ export default function ClaimSlot() {
                 size="lg"
                 icon={ArrowRight}
                 iconPosition="right"
-                onClick={() => setClaimedModal(true)}
+                onClick={handleClaim}
               >
                 Claim Bay A2 Now
               </Button>
+
               <Button variant="ghost" fullWidth onClick={() => navigate('/driver/dashboard')}>
                 Pass on Slot
               </Button>

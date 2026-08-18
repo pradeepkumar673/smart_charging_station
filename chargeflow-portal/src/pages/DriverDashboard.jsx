@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DriverSidebar from '../components/layout/DriverSidebar';
 import DriverHeader from '../components/layout/DriverHeader';
@@ -6,17 +6,39 @@ import Footer from '../components/layout/Footer';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import StationCard from '../components/driver/StationCard';
+import { StatCardSkeleton } from '../components/ui/StatCardSkeleton';
+import { StationCardSkeleton } from '../components/ui/StationCardSkeleton';
+import { getNearbyStations } from '../data/mockStations';
 import { Search, Zap, Leaf, ShieldCheck, Flame, CalendarCheck, MapPin, Navigation, ArrowRight, Sparkles, AlertTriangle } from 'lucide-react';
 
 export default function DriverDashboard() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [nearbyStations, setNearbyStations] = useState([]);
 
-  const nearbyStations = [
-    { id: 'stn-01', name: 'ChargeFlow Hub - MG Road', address: 'MG Road Metro Complex', rating: 4.9, reviewsCount: 184, distance: '2.4 km', eta: '8 min', slotsAvailable: 4, totalSlots: 8, price: '₹14/kWh', maxPower: '150 kW DC Fast', renewablePercent: 92 },
-    { id: 'stn-02', name: 'Indiranagar Supercharge', address: 100 + ' Feet Rd, Indiranagar', rating: 4.8, reviewsCount: 96, distance: '1.1 km', eta: '4 min', slotsAvailable: 2, totalSlots: 6, price: '₹15/kWh', maxPower: '350 kW NACS', renewablePercent: 85 },
-    { id: 'stn-03', name: 'Koramangala Green Hub', address: '5th Block Koramangala', rating: 4.7, reviewsCount: 210, distance: '4.8 km', eta: '14 min', slotsAvailable: 5, totalSlots: 10, price: '₹12/kWh', maxPower: '60 kW CCS2', renewablePercent: 100 },
-  ];
+  useEffect(() => {
+    getNearbyStations().then((data) => {
+      // Map mock data format to StationCard expectations if needed
+      const formatted = data.map(s => ({
+        id: s.id,
+        name: s.name,
+        address: s.address,
+        rating: s.rating,
+        reviewsCount: s.reviewCount,
+        distance: `${s.distanceKm} km`,
+        eta: `${Math.round(s.distanceKm * 3 + 2)} min`,
+        slotsAvailable: s.bays.filter(b => b.status === 'available').length,
+        totalSlots: s.bays.length,
+        price: `₹${s.pricePerKwh}/kWh`,
+        maxPower: `${s.powerKw} kW`,
+        renewablePercent: s.renewableShare,
+      }));
+      setNearbyStations(formatted);
+      setLoading(false);
+    });
+  }, []);
+
 
   return (
     <div className="min-h-screen bg-[#141218] text-[#e6e0e9] flex">
@@ -165,10 +187,13 @@ export default function DriverDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {nearbyStations.map((stn) => (
-                <StationCard key={stn.id} station={stn} />
-              ))}
+              {loading
+                ? Array.from({ length: 3 }).map((_, i) => <StationCardSkeleton key={i} />)
+                : nearbyStations.map((stn) => (
+                    <StationCard key={stn.id} station={stn} />
+                  ))}
             </div>
+
           </div>
 
           {/* Community Suggestion Banner */}

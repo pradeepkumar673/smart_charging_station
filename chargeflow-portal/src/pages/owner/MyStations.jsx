@@ -6,7 +6,8 @@ import Footer from '../../components/layout/Footer';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
-import { Building2, Plus, Search, Star, MapPin, Zap, Activity, ArrowRight, X } from 'lucide-react';
+import EmptyState from '../../components/states/EmptyState';
+import { Building2, Plus, Search, Star, MapPin, Zap, Activity, ArrowRight, X, PlusCircle } from 'lucide-react';
 
 export default function MyStations() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -39,7 +40,17 @@ export default function MyStations() {
           </div>
 
           {/* Station Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {stations.length === 0 ? (
+            <EmptyState
+              icon={PlusCircle}
+              title="No stations added"
+              description="Add your first charging station to start managing bays, pricing, and bookings."
+              ctaLabel="Add your first station"
+              onCtaClick={() => setAddModal(true)}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
             {stations.map((s) => (
               <Card key={s.id} glow className="flex flex-col justify-between h-full space-y-4">
                 <div className="space-y-3">
@@ -86,7 +97,9 @@ export default function MyStations() {
               </Card>
             ))}
           </div>
+          )}
         </main>
+
 
         {/* Add Station Modal */}
         {addModal && (
